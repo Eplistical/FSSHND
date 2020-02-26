@@ -8,16 +8,13 @@ SRC = .
 
 all : main
 
-main : hamiltonian.o tully1_hamiltonian.o main.o
+main : main.cpp hamiltonian.o tully1_hamiltonian.o
 	$(CXX) -o $@ $^ $(LIBS)
 
 hamiltonian.o : $(SRC)/hamiltonian.cpp
 	$(CXX) $(OPT) -c $^ -o $@
 
 tully1_hamiltonian.o : $(SRC)/tully1_hamiltonian.cpp
-	$(CXX) $(OPT) -c $^ -o $@
-
-main.o : $(SRC)/main.cpp
 	$(CXX) $(OPT) -c $^ -o $@
 
 misc : 

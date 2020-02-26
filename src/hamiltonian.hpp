@@ -46,6 +46,6 @@ namespace mqc {
             std::map<std::string, double> m_params;
     };
 
-};
+} // namespace mqc
 
-#endif
+#endif // _HAMILTONIAN_HPP

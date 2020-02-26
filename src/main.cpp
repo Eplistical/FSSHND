@@ -4,6 +4,7 @@
 #include <vector>
 #include "tully1_hamiltonian.hpp"
 #include "fssh_trajectory.hpp"
+#include "traj_recorder.hpp"
 #include "misc/matrixop.hpp"
 #include "boost/program_options.hpp"
 
@@ -13,20 +14,20 @@ namespace po = boost::program_options;
 
 using hamiltonian_t = Tully1_Hamiltonian;
 using trajectory_t = FSSH_Trajectory<hamiltonian_t>;
+using recorder_t = traj_recorder<trajectory_t>;
 
 int ndim = 2;
 int edim = 2;
 double mass = 2000.0;
 int init_s = 0;
 vector<double> init_r { -5.0, 0.0 };
-vector<double> init_p { 3.0, 0.0 };
+vector<double> init_p { 10.0, 0.0 };
 vector<double> sigma_r { 0.0, 0.0 };
 vector<double> sigma_p { 0.0, 0.0 };
-int Ntraj = 1;
-int Nstep = 100000;
-int output_step = 100;
+int Ntraj = 5;
+int Nstep = 10000;
+int output_step = 1000;
 double dt = 0.1;
-int Nrec = Nstep / output_step;
 bool enable_hop = true;
 vector<double> potential_params;
 int seed = 42;
@@ -97,8 +98,20 @@ void run() {
     /*
      * run simulation
      */
+    recorder_t recorder;
     vector<trajectory_t> swarm = gen_swarm(Ntraj);
     for (int istep(0); istep < Nstep; ++istep) {
+        // recording
+        if (istep % output_step == 0) {
+            recorder.stamp(swarm);
+            if (all_of(swarm.begin(), swarm.end(), check_end)) {
+                // check if all trajectories get end
+                for (int irec(istep / output_step); irec < Nstep / output_step; ++irec) {
+                    recorder.stamp(swarm);
+                }
+                break;
+            }
+        }
         // propagation
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
@@ -108,14 +121,6 @@ void run() {
                 }
             }
         }
-        // recording
-        if (istep % output_step) {
-            if (all_of(swarm.begin(), swarm.end(), check_end)) {
-                // check if all trajectories get end
-                break;
-            }
-            cout << swarm[0].get_r()[0] << endl;
-        }
     }
 
 
@@ -123,7 +128,29 @@ void run() {
 
 
     // --- output --- //
+    auto rarr = recorder.get_r_by_rec(-1);
+    auto varr = recorder.get_v_by_rec(-1);
+    auto carr = recorder.get_c_by_rec(-1);
+    auto sarr = recorder.get_s_by_rec(-1);
+    auto tarr = recorder.get_t_by_rec(-1);
+    int Nrec = recorder.get_Nrec();
 
+    for (auto& x : rarr) {
+        cout << x << " ";
+    }
+    cout << endl;
+    for (auto& x : varr) {
+        cout << x << " ";
+    }
+    cout << endl;
+    for (auto& x : sarr) {
+        cout << x << " ";
+    }
+    cout << endl;
+    for (auto& x : tarr) {
+        cout << x << " ";
+    }
+    cout << endl;
 
 }
 

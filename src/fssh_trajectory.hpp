@@ -28,6 +28,7 @@ namespace mqc {
             // --- simulation --- //
             void setup( double /* mass */, const std::vector<double>& /* r */, const std::vector<double>& /* v */,
                 const std::vector<std::complex<double>>& /* c */, int /* s */);
+            void die();
             void integrator(double /* dt */);
             void hopper();
         public:
@@ -36,11 +37,20 @@ namespace mqc {
             double cal_PE() const;
         public:
             // --- getter/setter --- //
+            int get_ndim() const noexcept { return m_ndim; }
+            void set_ndim(int ndim) { m_ndim = ndim; }
+
+            int get_edim() const noexcept { return m_ndim; }
+            void set_edim(int ndim) { m_ndim = ndim; }
+
             double get_mass() const noexcept { return m_mass; }
             void set_mass(double mass) { m_mass = mass; }
 
             double get_kT() const noexcept { return m_kT; }
             void set_kT(double kT) { m_kT = kT; }
+
+            double get_t() const noexcept { return m_t; }
+            void set_t(double t) { m_t = t; }
 
             std::vector<double> get_r() const noexcept { return m_r; }
             void set_r(const std::vector<double>& r) { m_r = r; }
@@ -69,6 +79,7 @@ namespace mqc {
             int m_edim;
             double m_mass;
             double m_kT;
+            double m_t;
             std::vector<double> m_r;
             std::vector<double> m_v;
             std::vector<std::complex<double>> m_c;
@@ -108,7 +119,9 @@ namespace mqc {
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::setup( double mass, const std::vector<double>& r, const std::vector<double>& v,
                 const std::vector<std::complex<double>>& c, int s) { 
-            // setup trajectory
+            /*
+             * setup trajectory for simulation
+             */
             // check
             misc::confirm<misc::ValueError>(r.size() == v.size(), "init_state: invalid r/v sizes.");
             misc::confirm<misc::ValueError>(c.size() == m_edim, "init_state: invalid c size.");
@@ -116,6 +129,7 @@ namespace mqc {
             // setup
             m_ndim = r.size();
             set_mass(mass);
+            set_t(0.0);
             set_r(r);
             set_v(v);
             set_c(c);
@@ -124,11 +138,24 @@ namespace mqc {
             update_status();
             m_initialized = true;
         }
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::die() {
+            /*
+             * kill the trajectory and save only simple configuration info
+             */
+            std::vector<double>().swap(m_randomforce);
+            std::vector<double>().swap(m_eva);
+            std::vector<std::complex<double>>().swap(m_evt);
+            std::vector<std::vector<std::complex<double>>>().swap(m_force);
+            std::vector<std::vector<std::complex<double>>>().swap(m_dc);
+            m_initialized = false;
+        }
             
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
             // propagate trajectory forward by dt
-            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory not initialzied.");
+            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
 
             // electronic part -- RK4
             std::vector<std::complex<double>> rk4_mat(m_edim * m_edim, 0.0);
@@ -168,12 +195,13 @@ namespace mqc {
             }
             // 2nd conf update
             m_v += 0.5 * dt / m_mass * tot_force;
+            m_t += dt;
             update_status();
         }
 
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::hopper() {
-            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory not initialzied.");
+            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
             // TODO : WRITE HOPPER
         }
 
@@ -182,7 +210,7 @@ namespace mqc {
 
     template <typename HamiltonianType>
         double FSSH_Trajectory<HamiltonianType>::cal_KE() const {
-            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory not initialzied.");
+            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
             return 0.5 * m_mass * sum(m_v * m_v);
         }
 
@@ -225,6 +253,6 @@ namespace mqc {
             F_berry *= 2.0;
             return F_berry;
         }
-};
+} // namespace mqc
 
-#endif
+#endif // _FSSH_TRAJECTORY_HPP

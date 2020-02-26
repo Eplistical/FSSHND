@@ -24,6 +24,6 @@ namespace mqc {
             virtual std::vector<std::vector<std::complex<double>>> cal_nablaH(const std::vector<double>& /* r */) const override;
     };
 
-};
+} // namespace mqc
 
-#endif
+#endif // _TULLY1_HAMILTONIAN_HPP
