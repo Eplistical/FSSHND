@@ -40,6 +40,8 @@ namespace mqc {
             inline std::vector<std::complex<double>> get_c_ele(int irec, int itraj) const;
             inline int get_s_ele(int irec, int itraj) const;
             inline double get_t_ele(int irec, int itraj) const;
+            inline double get_KE_ele(int irec, int itraj) const;
+            inline double get_PE_ele(int irec, int itraj) const;
         public:
             // --- extractor --- //
             std::vector<double> get_r_by_traj(int itraj = -1) const;
@@ -52,6 +54,10 @@ namespace mqc {
             std::vector<int> get_s_by_rec(int irec = -1) const;
             std::vector<double> get_t_by_traj(int itraj = -1) const;
             std::vector<double> get_t_by_rec(int irec = -1) const;
+            std::vector<double> get_KE_by_traj(int itraj = -1) const;
+            std::vector<double> get_KE_by_rec(int irec = -1) const;
+            std::vector<double> get_PE_by_traj(int itraj = -1) const;
+            std::vector<double> get_PE_by_rec(int irec = -1) const;
         public:
             // --- getter/setter --- //
             int get_ndim() const noexcept { return m_ndim; }
@@ -146,6 +152,16 @@ namespace mqc {
     template <typename TrajectoryType> 
         inline double traj_recorder<TrajectoryType>::get_t_ele(int irec, int itraj) const {
             return m_history.at(itraj+irec*m_Ntraj).get_t();
+        }
+
+    template <typename TrajectoryType> 
+        inline double traj_recorder<TrajectoryType>::get_KE_ele(int irec, int itraj) const {
+            return m_history.at(itraj+irec*m_Ntraj).cal_KE();
+        }
+
+    template <typename TrajectoryType> 
+        inline double traj_recorder<TrajectoryType>::get_PE_ele(int irec, int itraj) const {
+            return m_history.at(itraj+irec*m_Ntraj).cal_PE();
         }
 
 
@@ -418,6 +434,109 @@ namespace mqc {
             return rst;
         }
 
+    template <typename TrajectoryType> 
+        std::vector<double> traj_recorder<TrajectoryType>::get_KE_by_traj(int itraj) const {
+            /*
+             * extract KE for the itraj^th trajectory
+             *  if itraj == -1, extract for all trajectories
+             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             */
+            // check
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            // extract
+            std::vector<double> rst;
+            rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
+            if (itraj == -1) {
+                for (int ktraj(0); ktraj < m_Ntraj; ++ktraj) {
+                    auto tmp = get_KE_by_traj(ktraj);
+                    rst.insert(rst.end(), std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
+                }
+            }
+            else {
+                for (int irec(0); irec < m_Nrec; ++irec) {
+                    rst.push_back(get_KE_ele(irec, itraj));
+                }
+            }
+            return rst;
+        }
+
+    template <typename TrajectoryType> 
+        std::vector<double> traj_recorder<TrajectoryType>::get_KE_by_rec(int irec) const {
+            /*
+             * extract KE for the irec^th record
+             *  if irec == -1, extract for all records
+             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             */
+            // check
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            // extract
+            std::vector<double> rst;
+            rst.reserve(m_Ntraj * (irec == -1 ? m_Nrec : 1));
+            if (irec == -1) {
+                for (int krec(0); krec < m_Nrec; ++krec) {
+                    auto tmp = get_KE_by_rec(krec);
+                    rst.insert(rst.end(), std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
+                }
+            }
+            else {
+                for (int itraj(0); itraj < m_Ntraj; ++itraj) {
+                    rst.push_back(get_KE_ele(irec, itraj));
+                }
+            }
+            return rst;
+        }
+
+    template <typename TrajectoryType> 
+        std::vector<double> traj_recorder<TrajectoryType>::get_PE_by_traj(int itraj) const {
+            /*
+             * extract PE for the itraj^th trajectory
+             *  if itraj == -1, extract for all trajectories
+             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             */
+            // check
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            // extract
+            std::vector<double> rst;
+            rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
+            if (itraj == -1) {
+                for (int ktraj(0); ktraj < m_Ntraj; ++ktraj) {
+                    auto tmp = get_PE_by_traj(ktraj);
+                    rst.insert(rst.end(), std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
+                }
+            }
+            else {
+                for (int irec(0); irec < m_Nrec; ++irec) {
+                    rst.push_back(get_PE_ele(irec, itraj));
+                }
+            }
+            return rst;
+        }
+
+    template <typename TrajectoryType> 
+        std::vector<double> traj_recorder<TrajectoryType>::get_PE_by_rec(int irec) const {
+            /*
+             * extract PE for the irec^th record
+             *  if irec == -1, extract for all records
+             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             */
+            // check
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            // extract
+            std::vector<double> rst;
+            rst.reserve(m_Ntraj * (irec == -1 ? m_Nrec : 1));
+            if (irec == -1) {
+                for (int krec(0); krec < m_Nrec; ++krec) {
+                    auto tmp = get_PE_by_rec(krec);
+                    rst.insert(rst.end(), std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
+                }
+            }
+            else {
+                for (int itraj(0); itraj < m_Ntraj; ++itraj) {
+                    rst.push_back(get_PE_ele(irec, itraj));
+                }
+            }
+            return rst;
+        }
 } // namespace mqc
 
 

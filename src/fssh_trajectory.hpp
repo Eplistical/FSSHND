@@ -145,7 +145,6 @@ namespace mqc {
              * kill the trajectory and save only simple configuration info
              */
             std::vector<double>().swap(m_randomforce);
-            std::vector<double>().swap(m_eva);
             std::vector<std::complex<double>>().swap(m_evt);
             std::vector<std::vector<std::complex<double>>>().swap(m_force);
             std::vector<std::vector<std::complex<double>>>().swap(m_dc);
@@ -210,7 +209,6 @@ namespace mqc {
 
     template <typename HamiltonianType>
         double FSSH_Trajectory<HamiltonianType>::cal_KE() const {
-            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
             return 0.5 * m_mass * sum(m_v * m_v);
         }
 

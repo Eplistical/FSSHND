@@ -6,6 +6,7 @@
 #include "fssh_trajectory.hpp"
 #include "traj_recorder.hpp"
 #include "misc/matrixop.hpp"
+#include "misc/randomer.hpp"
 #include "boost/program_options.hpp"
 
 using namespace mqc;
@@ -22,8 +23,8 @@ double mass = 2000.0;
 int init_s = 0;
 vector<double> init_r { -5.0, 0.0 };
 vector<double> init_p { 10.0, 0.0 };
-vector<double> sigma_r { 0.0, 0.0 };
-vector<double> sigma_p { 0.0, 0.0 };
+vector<double> sigma_r { 0.5, 0.5 };
+vector<double> sigma_p { 1.0, 1.0 };
 int Ntraj = 5;
 int Nstep = 10000;
 int output_step = 1000;
@@ -71,16 +72,23 @@ bool argparse(int argc, char** argv)
 
 
 
-vector<trajectory_t> gen_swarm(int N) {
+vector<trajectory_t> gen_swarm(int Ntraj) {
     /*
      * generate a swarm of trajectories
      */
     vector<complex<double>> init_c(edim, matrixop::ZEROZ);
     init_c[init_s] = matrixop::ONEZ;
     vector<trajectory_t> swarm;
-    for (int i(0); i < N; ++i) {
+
+    for (int itraj(0); itraj < Ntraj; ++itraj) {
         swarm.emplace_back(hami);
-        swarm.back().setup(mass, init_r, init_p / mass, init_c, init_s);
+        vector<double> r(ndim);
+        vector<double> v(ndim);
+        for (int i(0); i < ndim; ++i) {
+            r[i] = randomer::normal(init_r[i], sigma_r[i]);
+            v[i] = randomer::normal(init_p[i], sigma_p[i]) / mass;
+        }
+        swarm.back().setup(mass, r, v, init_c, init_s);
     }
     return swarm;
 }
@@ -128,11 +136,13 @@ void run() {
 
 
     // --- output --- //
+
+
     auto rarr = recorder.get_r_by_rec(-1);
     auto varr = recorder.get_v_by_rec(-1);
     auto carr = recorder.get_c_by_rec(-1);
-    auto sarr = recorder.get_s_by_rec(-1);
-    auto tarr = recorder.get_t_by_rec(-1);
+    auto sarr = recorder.get_KE_by_rec(-1);
+    auto tarr = recorder.get_PE_by_rec(-1);
     int Nrec = recorder.get_Nrec();
 
     for (auto& x : rarr) {
@@ -151,11 +161,11 @@ void run() {
         cout << x << " ";
     }
     cout << endl;
-
 }
 
 
 int main(int argc, char** argv) {
+    randomer::seed(seed);
     run();
     return 0;
 }
