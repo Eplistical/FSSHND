@@ -3,7 +3,7 @@ MPICXX = mpicxx
 OPT = -O0
 
 LIBS += -L./misc -Wl,--rpath=./misc -lmisc
-LIBS += -lopenblas -llapack -lpthread -lgfortran 
+LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran 
 SRC = .
 
 all : main

@@ -30,7 +30,6 @@ namespace mqc {
                 const std::vector<std::complex<double>>& /* c */, int /* s */);
             void integrator(double /* dt */);
             void hopper();
-            bool check_end() const;
         public:
             // --- quantities --- //
             double cal_KE() const;
@@ -115,7 +114,7 @@ namespace mqc {
             misc::confirm<misc::ValueError>(c.size() == m_edim, "init_state: invalid c size.");
             misc::confirm<misc::ValueError>(s < m_edim, "init_state: invalid s number.");
             // setup
-            m_ndim = m_r.size();
+            m_ndim = r.size();
             set_mass(mass);
             set_r(r);
             set_v(v);
@@ -123,6 +122,7 @@ namespace mqc {
             set_s(s);
             // update status
             update_status();
+            m_initialized = true;
         }
             
     template <typename HamiltonianType>
@@ -176,12 +176,6 @@ namespace mqc {
             misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory not initialzied.");
             // TODO : WRITE HOPPER
         }
-
-    template <typename HamiltonianType>
-        bool FSSH_Trajectory<HamiltonianType>::check_end() const {
-            return false;
-        }
-    
 
     // --- quantities --- //
 
