@@ -5,8 +5,11 @@
 #include "tully1_hamiltonian.hpp"
 #include "fssh_trajectory.hpp"
 #include "traj_recorder.hpp"
+#include "misc/vector.hpp"
 #include "misc/matrixop.hpp"
 #include "misc/randomer.hpp"
+#include "misc/ioer.hpp"
+#include "misc/timer.hpp"
 #include "boost/program_options.hpp"
 
 using namespace mqc;
@@ -21,8 +24,8 @@ int ndim = 2;
 int edim = 2;
 double mass = 2000.0;
 int init_s = 0;
-vector<double> init_r { -5.0, 0.0 };
-vector<double> init_p { 10.0, 0.0 };
+vector<double> init_r { -6.0, 0.0 };
+vector<double> init_p { 20.0, 0.0 };
 vector<double> sigma_r { 0.5, 0.5 };
 vector<double> sigma_p { 1.0, 1.0 };
 int Ntraj = 5;
@@ -97,7 +100,8 @@ bool check_end(const trajectory_t& traj) {
     /*
      * determine if a trajectory reaches the end of its simulation
      */
-    return abs(traj.get_r()[0]) > 6.0;
+    return (traj.get_r()[0] > 8.0 and traj.get_v()[0] > 0.0) 
+        or (traj.get_r()[0] < -8.0 and traj.get_v()[0] < 0.0);
     //return false;
 }
 
@@ -125,47 +129,80 @@ void run() {
             if (not check_end(traj)) {
                 traj.integrator(dt);
                 if (enable_hop) {
-                    traj.hopper();
+                    traj.hopper(dt);
                 }
             }
         }
     }
 
-
     // --- collecting --- // 
+
+
 
 
     // --- output --- //
 
+    // header
+    hami.output_params();
+    ioer::info("# simulation paras: ",  
+    " ndim = ", ndim,
+    " edim = ", edim,
+    " mass = ", mass,
+    " Ntraj = ", Ntraj,
+    " Nstep = ", Nstep,
+    " output_step = ", output_step,
+    " dt = ", dt,
+    " init_r = ", init_r,
+    " init_p = ", init_p,
+    " sigma_r = ", sigma_r,
+    ""
+    );
+    ioer::tabout("# t", "n0T", "n0R", "n1T", "n1R");
 
-    auto rarr = recorder.get_r_by_rec(-1);
-    auto varr = recorder.get_v_by_rec(-1);
-    auto carr = recorder.get_c_by_rec(-1);
-    auto sarr = recorder.get_KE_by_rec(-1);
-    auto tarr = recorder.get_PE_by_rec(-1);
     int Nrec = recorder.get_Nrec();
-
-    for (auto& x : rarr) {
-        cout << x << " ";
+    auto tarr = recorder.get_t_by_traj(0);
+    for (int irec(0); irec < Nrec; ++irec) {
+        auto sarr = recorder.get_s_by_rec(irec);
+        auto rarr = recorder.get_r_by_rec(irec);
+        double n0T = 0.0;
+        double n0R = 0.0;
+        double n1T = 0.0;
+        double n1R = 0.0;
+        for (int itraj(0); itraj < Ntraj; ++itraj) {
+            if (sarr[itraj] == 0) {
+                if (rarr[0+itraj*ndim] < 0.0) {
+                    n0R += 1.0;
+                }
+                else {
+                    n0T += 1.0;
+                }
+            }
+            else if (sarr[itraj] == 1) {
+                if (rarr[0+itraj*ndim] < 0.0) {
+                    n1R += 1.0;
+                }
+                else {
+                    n1T += 1.0;
+                }
+            }
+        }
+        n0R /= Ntraj;
+        n0T /= Ntraj;
+        n1R /= Ntraj;
+        n1T /= Ntraj;
+        ioer::tabout(tarr[irec], n0T, n0R, n1T, n1R);
     }
-    cout << endl;
-    for (auto& x : varr) {
-        cout << x << " ";
-    }
-    cout << endl;
-    for (auto& x : sarr) {
-        cout << x << " ";
-    }
-    cout << endl;
-    for (auto& x : tarr) {
-        cout << x << " ";
-    }
-    cout << endl;
 }
 
 
 int main(int argc, char** argv) {
+    // parse args
+    if (argparse(argc, argv) == false) {
+        return -1;
+    }
     randomer::seed(seed);
+    timer::tic();
     run();
+    ioer::info("# ", timer::toc());
     return 0;
 }

@@ -9,6 +9,7 @@
 #include <complex>
 #include "misc/crasher.hpp"
 #include "misc/matrixop.hpp"
+#include "misc/randomer.hpp"
 #include "misc/vector.hpp"
 
 
@@ -24,13 +25,16 @@ namespace mqc {
             // --- ctor/dtor --- //
             FSSH_Trajectory(const HamiltonianType& /* hamiltonian */);
             ~FSSH_Trajectory() = default;
+        private:
+            // --- simualtion utils --- //
+            double cal_hop_prob(int /* from */, int /* to */, double /* dt */) const;
         public:
             // --- simulation --- //
             void setup( double /* mass */, const std::vector<double>& /* r */, const std::vector<double>& /* v */,
                 const std::vector<std::complex<double>>& /* c */, int /* s */);
             void die();
             void integrator(double /* dt */);
-            void hopper();
+            void hopper(double /* dt */);
         public:
             // --- quantities --- //
             double cal_KE() const;
@@ -64,6 +68,12 @@ namespace mqc {
             int get_s() const noexcept { return m_s; }
             void set_s(int s) { m_s = s; }
 
+            int get_Nhop_accepted() const noexcept { return m_Nhop_accepted; }
+            void set_Nhop_accepted(int Nhop_accepted) { m_Nhop_accepted = Nhop_accepted; }
+
+            int get_Nhop_frustrated() const noexcept { return m_Nhop_frustrated; }
+            void set_Nhop_frustrated(int Nhop_frustrated) { m_Nhop_frustrated = Nhop_frustrated; }
+
             double get_gamma() const noexcept { return m_gamma; }
             void set_gamma(double param_gamma) { m_gamma = param_gamma; }
 
@@ -93,6 +103,9 @@ namespace mqc {
             std::vector<std::vector<std::complex<double>>> m_dc;
             std::vector<double> m_eva;
             std::vector<std::complex<double>> m_evt;
+            // --- hop --- //
+            int m_Nhop_accepted;
+            int m_Nhop_frustrated;
             // --- options/flags --- //
             bool m_enable_fric;
             bool m_initialized;
@@ -134,6 +147,8 @@ namespace mqc {
             set_v(v);
             set_c(c);
             set_s(s);
+            set_Nhop_accepted(0);
+            set_Nhop_frustrated(0);
             // update status
             update_status();
             m_initialized = true;
@@ -199,9 +214,85 @@ namespace mqc {
         }
 
     template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::hopper() {
+        double FSSH_Trajectory<HamiltonianType>::cal_hop_prob(int from, int to, double dt) const {
+            /*
+             * hopping probability for from->to
+             */
+            std::complex<double> v_dot_dc = matrixop::ZEROZ;
+            for (int i(0); i < m_ndim; ++i) {
+                v_dot_dc += m_v[i] * m_dc[i][to+from*m_edim];
+            }
+            return -2.0 * dt * (m_c[from] * conj(m_c[to]) * v_dot_dc).real() / (m_c[from] * conj(m_c[from])).real();
+        }
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::hopper(double dt) {
             misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
-            // TODO : WRITE HOPPER
+            if (m_edim <= 1) {
+                // one surface only, no hop
+                return ;
+            }
+            // calculate hop probablities
+            const int from = m_s;
+            std::vector<double> prob(m_edim, 0.0);
+            prob[from] = 1.0;
+            for (int to(0); to < m_edim; ++to) {
+                if (to != from) {
+                    prob[to] = cal_hop_prob(from, to, dt);
+                    prob[from] -= prob[to];
+                }
+            }
+            misc::confirm<misc::ValueError>(prob[from] > 0.0, "hopper: tot prob > 1.0, dt too large.");
+            // determine whether hop happens 
+            const double randnum = randomer::rand(0.0, 1.0);
+            double accu = 0.0;
+            int to = 0;
+            while (to < m_edim) {
+                accu += prob[to];
+                if (accu > randnum) {
+                    break;
+                }
+                to += 1;
+            }
+            misc::confirm<misc::IndexError>(to < m_edim, "hopper: to >= edim.");
+            // hop occurs
+            if (to != from) {
+                // momentum rescaling direction
+                std::vector<double> n_rescale(m_ndim, 0.0);
+                
+                /*
+                // x-direction rescaling
+                n_rescale[0] = 1.0;
+                */
+
+                // Re(dc_jk * (v \dot dc_kj)) rescaling
+                std::complex<double> v_dot_dc = matrixop::ZEROZ;
+                for (int i(0); i < m_ndim; ++i) {
+                    v_dot_dc += m_v[i] * m_dc[i][to+from*m_edim];
+                }
+                for (int i(0); i < m_ndim; ++i) {
+                    n_rescale[i] = (m_dc[i][from+to*m_edim] * v_dot_dc).real();
+                }
+
+                // implement momemtum rescaling
+                const double dE = m_eva[to] - m_eva[from];
+                if (norm(n_rescale) > 1e-40) {
+                    std::vector<double> vn = component(m_v, n_rescale);
+                    double vn_norm = norm(vn);
+                    double tmp = vn_norm * vn_norm - 2.0 * dE / m_mass; 
+                    if (tmp > 0.0) {
+                        // hop accepted
+                        m_Nhop_accepted += 1;
+                        double vn_norm_new = sqrt(tmp);
+                        m_v += (vn_norm_new - vn_norm) / vn_norm * vn;
+                        m_s = to;
+                    }
+                    else {
+                        // hop frustrated
+                        m_Nhop_frustrated += 1;
+                    }
+                }
+            }
         }
 
     // --- quantities --- //
