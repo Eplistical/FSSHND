@@ -68,8 +68,6 @@ namespace mqc {
                     }
                 }
             }
-            lastevt = std::move(evt);
-
             // calculate force & dc
             const int ndim = r.size();
             const std::vector<std::vector<std::complex<double>>> nablaH = cal_nablaH(r);
@@ -77,7 +75,7 @@ namespace mqc {
             force.resize(ndim);
             for (int i = 0; i < ndim; ++i) {
                 dc[i] = matrixop::matCmatmat(evt, nablaH[i], evt, m_dim, m_dim);
-                force[i].assign(m_dim * m_dim, matrixop::ZEROZ);
+                force[i].resize(m_dim * m_dim);
                 for (int j = 0; j < m_dim; ++j) {
                     for (int k = 0; k < m_dim; ++k) {
                         force[i][j+k*m_dim] = -dc[i][j+k*m_dim];
@@ -90,6 +88,8 @@ namespace mqc {
                     }
                 }
             }
+            // store evt
+            lastevt = std::move(evt);
     }
 
 };

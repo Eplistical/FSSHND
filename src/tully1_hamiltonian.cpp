@@ -72,9 +72,10 @@ namespace mqc {
         const double y = r.at(1);
         const std::complex<double> eip = exp(matrixop::IMAGIZ * cal_phi(r));
         const std::vector<double> nabla_phi = cal_nabla_phi(r);
-        std::vector<std::vector<std::complex<double>>> nablaH(4);
+        std::vector<std::vector<std::complex<double>>> nablaH(2);
         // dH/dx
         std::vector<std::complex<double>>& nablaHx = nablaH[0];
+        nablaHx.resize(m_dim * m_dim);
         if (x >= 0.0 ) {
             nablaHx[0+0*2] = m_params.at("A") * m_params.at("B") * exp(-m_params.at("B") * x);
         }
@@ -87,6 +88,7 @@ namespace mqc {
         nablaHx[1+0*2] = conj(nablaHx[0+1*2]);
         // dH/dy
         std::vector<std::complex<double>>& nablaHy = nablaH[1];
+        nablaHy.resize(m_dim * m_dim);
         nablaHy[0+0*2] = 0.0;
         nablaHy[1+1*2] = -nablaHy[0+0*2];
         nablaHy[0+1*2] = eip * (matrixop::IMAGIZ * m_params.at("C") * exp(-m_params.at("D") * x * x) * nabla_phi[1]);
