@@ -8,7 +8,7 @@
 #include <vector>
 #include <complex>
 
-namespace mqc {
+namespace {
 
     template <typename HamiltonianType>
     class FSSH_Trajectory {

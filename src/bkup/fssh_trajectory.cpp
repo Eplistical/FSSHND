@@ -7,7 +7,7 @@
 #include "misc/vector.hpp"
 #include "fssh_trajectory.hpp"
 
-namespace mqc {
+namespace {
 
 
     // --- ctor/dtor --- //

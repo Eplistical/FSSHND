@@ -1,0 +1,85 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	/a3c87ab5/
+E1	hamiltonian.m	/^    E1 = zeros(Nx, Nx);$/;"	v
+E2	hamiltonian.m	/^    E2 = zeros(Nx, Nx);$/;"	v
+Error	src/exceptions.hpp	/^            explicit Error(const std::string& msg = "") {$/;"	f	class:__anon6834bed40111::Error
+Error	src/exceptions.hpp	/^    class Error : public std::exception$/;"	c	namespace:__anon6834bed40111
+FSSH_Trajectory	src/fssh_trajectory.cpp	/^        FSSH_Trajectory<HamiltonianType>::FSSH_Trajectory(const HamiltonianType& hamiltonian) $/;"	f	class:__anon107f92e70111::FSSH_Trajectory
+FSSH_Trajectory	src/fssh_trajectory.hpp	/^    class FSSH_Trajectory {$/;"	c	namespace:__anon107fa82c0111
+H	hamiltonian.m	/^        H = zeros(N,N);$/;"	v
+Hamiltonian	src/hamiltonian.hpp	/^    class Hamiltonian {$/;"	c	namespace:__anonf61dab660111
+Htest	hamiltonian.m	/^    Htest = cal_H([1,2])$/;"	v
+IndexError	src/exceptions.hpp	/^            explicit IndexError(const std::string& msg = "")$/;"	f	class:__anon6834bed40111::IndexError
+IndexError	src/exceptions.hpp	/^    class IndexError final : public Error$/;"	c	namespace:__anon6834bed40111
+N	hamiltonian.m	/^    N = 2;$/;"	v
+Nx	hamiltonian.m	/^    Nx = 50;$/;"	v
+Vc	hamiltonian.m	/^    Vc = 0.2;$/;"	v
+Vk	hamiltonian.m	/^        Vk = 0.5 * m * w^2 * (sum(x.^2) - x(k)^2) + 0.5 * m * ww^2 * (x(k) - x0)^2;$/;"	v
+W	hamiltonian.m	/^    W = 1.0;$/;"	v
+_EXCEPTIONS_HPP	src/exceptions.hpp	/^#define _EXCEPTIONS_HPP$/;"	d
+_FSSH_TRAJECTORY_HPP	src/fssh_trajectory.hpp	/^#define _FSSH_TRAJECTORY_HPP$/;"	d
+_HAMILTONIAN_HPP	src/hamiltonian.hpp	/^#define _HAMILTONIAN_HPP$/;"	d
+__anon107f92e70111	src/fssh_trajectory.cpp	/^namespace {$/;"	n	file:
+__anon107f92e70202	src/fssh_trajectory.cpp	/^                    [](double accu, double vi) { return accu + vi*vi; });$/;"	f	function:__anon107f92e70111::FSSH_Trajectory::cal_KE	file:
+__anon107fa82c0111	src/fssh_trajectory.hpp	/^namespace {$/;"	n
+__anon6834bed40111	src/exceptions.hpp	/^namespace {$/;"	n
+__anonf61dab660111	src/hamiltonian.hpp	/^namespace {$/;"	n
+cal_H	hamiltonian.m	/^    function H = cal_H(x)$/;"	f
+cal_KE	src/fssh_trajectory.cpp	/^        double FSSH_Trajectory<HamiltonianType>::cal_KE() const {$/;"	f	class:__anon107f92e70111::FSSH_Trajectory	typeref:typename:double
+cal_PE	src/fssh_trajectory.cpp	/^        double FSSH_Trajectory<HamiltonianType>::cal_PE() const {$/;"	f	class:__anon107f92e70111::FSSH_Trajectory	typeref:typename:double
+cal_V	hamiltonian.m	/^    function Vk = cal_V(x, k)$/;"	f
+check_end	src/fssh_trajectory.cpp	/^        bool FSSH_Trajectory<HamiltonianType>::check_end() const {$/;"	f	class:__anon107f92e70111::FSSH_Trajectory	typeref:typename:bool
+confirm	src/exceptions.hpp	/^        void confirm(bool condition, const std::string& msg) {$/;"	f	namespace:__anon6834bed40111	typeref:typename:void
+crash	src/exceptions.hpp	/^        void crash(bool condition, const std::string& msg) {$/;"	f	namespace:__anon6834bed40111	typeref:typename:void
+get_c	src/fssh_trajectory.hpp	/^            std::vector<std::complex<double>> get_c() const noexcept { return m_c; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<std::complex<double>>
+get_enable_fric	src/fssh_trajectory.hpp	/^            double get_enable_fric() const noexcept { return m_enable_fric; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+get_gamma	src/fssh_trajectory.hpp	/^            double get_gamma() const noexcept { return m_gamma; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+get_kT	src/fssh_trajectory.hpp	/^            double get_kT() const noexcept { return m_kT; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+get_mass	src/fssh_trajectory.hpp	/^            double get_mass() const noexcept { return m_mass; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+get_r	src/fssh_trajectory.hpp	/^            std::vector<double> get_r() const noexcept { return m_r; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<double>
+get_s	src/fssh_trajectory.hpp	/^            int get_s() const noexcept { return m_s; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:int
+get_v	src/fssh_trajectory.hpp	/^            std::vector<double> get_v() const noexcept { return m_v; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<double>
+h	hamiltonian.m	/^            h = cal_H([x;y]);$/;"	v
+hamiltonian	hamiltonian.m	/^function hamiltonian()$/;"	f
+hopper	src/fssh_trajectory.cpp	/^        void FSSH_Trajectory<HamiltonianType>::hopper() {$/;"	f	class:__anon107f92e70111::FSSH_Trajectory	typeref:typename:void
+init_state	src/fssh_trajectory.cpp	/^        void FSSH_Trajectory<HamiltonianType>::init_state( const std::vector<double>& r, const s/;"	f	class:__anon107f92e70111::FSSH_Trajectory	typeref:typename:void
+integrator	src/fssh_trajectory.cpp	/^        void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {$/;"	f	class:__anon107f92e70111::FSSH_Trajectory	typeref:typename:void
+m	hamiltonian.m	/^    m = 1.0;$/;"	v
+m_c	src/fssh_trajectory.hpp	/^            std::vector<std::complex<double>> m_c;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<std::complex<double>>
+m_dc	src/fssh_trajectory.hpp	/^            std::vector<std::vector<std::complex<double>>> m_dc;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<std::vector<std::complex<double>>>
+m_enable_fric	src/fssh_trajectory.hpp	/^            bool m_enable_fric;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:bool
+m_eva	src/fssh_trajectory.hpp	/^            std::vector<double> m_eva;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<double>
+m_evt	src/fssh_trajectory.hpp	/^            std::vector<std::complex<double>> m_evt;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<std::complex<double>>
+m_force	src/fssh_trajectory.hpp	/^            std::vector<std::vector<std::complex<double>>> m_force;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<std::vector<std::complex<double>>>
+m_gamma	src/fssh_trajectory.hpp	/^            double m_gamma;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+m_hamiltonian	src/fssh_trajectory.hpp	/^            HamiltonianType m_hamiltonian;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:HamiltonianType
+m_kT	src/fssh_trajectory.hpp	/^            double m_kT;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+m_mass	src/fssh_trajectory.hpp	/^            double m_mass;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:double
+m_msg	src/exceptions.hpp	/^            std::string m_msg;$/;"	m	class:__anon6834bed40111::Error	typeref:typename:std::string
+m_r	src/fssh_trajectory.hpp	/^            std::vector<double> m_r;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<double>
+m_randomforce	src/fssh_trajectory.hpp	/^            std::vector<double> m_randomforce;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<double>
+m_s	src/fssh_trajectory.hpp	/^            int m_s;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:int
+m_title	src/exceptions.hpp	/^            std::string m_title;$/;"	m	class:__anon6834bed40111::Error	typeref:typename:std::string
+m_v	src/fssh_trajectory.hpp	/^            std::vector<double> m_v;$/;"	m	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:std::vector<double>
+set_c	src/fssh_trajectory.hpp	/^            void set_c(const std::vector<std::complex<double>>& c) { m_c = c; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_enable_fric	src/fssh_trajectory.hpp	/^            void set_enable_fric(double enable_fric) { m_enable_fric = enable_fric; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_gamma	src/fssh_trajectory.hpp	/^            void set_gamma(double param_gamma) { m_gamma = param_gamma; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_kT	src/fssh_trajectory.hpp	/^            void set_kT(double kT) { m_kT = kT; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_mass	src/fssh_trajectory.hpp	/^            void set_mass(double mass) { m_mass = mass; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_r	src/fssh_trajectory.hpp	/^            void set_r(const std::vector<double>& r) { m_r = r; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_s	src/fssh_trajectory.hpp	/^            void set_s(int s) { m_s = s; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+set_v	src/fssh_trajectory.hpp	/^            void set_v(const std::vector<double>& v) { m_v = v; }$/;"	f	class:__anon107fa82c0111::FSSH_Trajectory	typeref:typename:void
+w	hamiltonian.m	/^    w = 1.0;$/;"	v
+what	src/exceptions.hpp	/^            virtual const char* what() const noexcept{ return m_msg.c_str(); }$/;"	f	class:__anon6834bed40111::Error	typeref:typename:const char *
+ww	hamiltonian.m	/^    ww = 2.0;$/;"	v
+x	hamiltonian.m	/^            x = meshx(ix, iy);$/;"	v
+x0	hamiltonian.m	/^    x0 = 1.0;$/;"	v
+xarr	hamiltonian.m	/^    xarr = linspace(-3,3,Nx);$/;"	v
+y	hamiltonian.m	/^            y = meshy(ix, iy);$/;"	v
+yarr	hamiltonian.m	/^    yarr = linspace(-3,3,Nx);$/;"	v

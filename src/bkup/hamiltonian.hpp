@@ -10,7 +10,7 @@
 #include <map>
 #include <string>
 
-namespace mqc {
+namespace {
 
     class Hamiltonian {
         public:
