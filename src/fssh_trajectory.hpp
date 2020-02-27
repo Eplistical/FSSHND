@@ -260,11 +260,10 @@ namespace mqc {
                 // momentum rescaling direction
                 std::vector<double> n_rescale(m_ndim, 0.0);
                 
-                /*
                 // x-direction rescaling
                 n_rescale[0] = 1.0;
-                */
 
+                /*
                 // Re(dc_jk * (v \dot dc_kj)) rescaling
                 std::complex<double> v_dot_dc = matrixop::ZEROZ;
                 for (int i(0); i < m_ndim; ++i) {
@@ -273,6 +272,7 @@ namespace mqc {
                 for (int i(0); i < m_ndim; ++i) {
                     n_rescale[i] = (m_dc[i][from+to*m_edim] * v_dot_dc).real();
                 }
+                */
 
                 // implement momemtum rescaling
                 const double dE = m_eva[to] - m_eva[from];

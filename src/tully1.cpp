@@ -26,10 +26,12 @@ double mass = 2000.0;
 int init_s = 0;
 vector<double> init_r { -6.0, 0.0 };
 vector<double> init_p { 20.0, 0.0 };
-vector<double> sigma_r { 0.5, 0.5 };
-vector<double> sigma_p { 1.0, 1.0 };
-int Ntraj = 5;
-int Nstep = 10000;
+//vector<double> sigma_r { 0.5, 0.5 };
+//vector<double> sigma_p { 1.0, 1.0 };
+vector<double> sigma_r { 0.0, 0.0 };
+vector<double> sigma_p { 0.0, 0.0 };
+int Ntraj = 2000;
+int Nstep = 100000;
 int output_step = 1000;
 double dt = 0.1;
 bool enable_hop = true;
@@ -102,7 +104,6 @@ bool check_end(const trajectory_t& traj) {
      */
     return (traj.get_r()[0] > 8.0 and traj.get_v()[0] > 0.0) 
         or (traj.get_r()[0] < -8.0 and traj.get_v()[0] < 0.0);
-    //return false;
 }
 
 
@@ -155,13 +156,14 @@ void run() {
     " init_r = ", init_r,
     " init_p = ", init_p,
     " sigma_r = ", sigma_r,
+    " sigma_p = ", sigma_p,
     ""
     );
     ioer::tabout("# t", "n0T", "n0R", "n1T", "n1R");
 
     int Nrec = recorder.get_Nrec();
-    auto tarr = recorder.get_t_by_traj(0);
     for (int irec(0); irec < Nrec; ++irec) {
+        double t = irec * output_step * dt;
         auto sarr = recorder.get_s_by_rec(irec);
         auto rarr = recorder.get_r_by_rec(irec);
         double n0T = 0.0;
@@ -190,7 +192,7 @@ void run() {
         n0T /= Ntraj;
         n1R /= Ntraj;
         n1T /= Ntraj;
-        ioer::tabout(tarr[irec], n0T, n0R, n1T, n1R);
+        ioer::tabout(t, n0T, n0R, n1T, n1R);
     }
 }
 
