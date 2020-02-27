@@ -1,14 +1,14 @@
 CXX = g++ 
 MPICXX = mpicxx
-OPT = -O3
+OPT = -O0
 
-LIBS += -L./misc -Wl,--rpath=./misc -lmisc
+LIBS += -L./misc -lmisc
 LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran 
 
 all : tully1
 
 tully1 : hamiltonian.o tully1_hamiltonian.o tully1.cpp
-	$(CXX) $(OPT) -o $@ $^ $(LIBS)
+	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 hamiltonian.o : hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 

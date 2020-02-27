@@ -10,6 +10,7 @@
 #include "misc/randomer.hpp"
 #include "misc/ioer.hpp"
 #include "misc/timer.hpp"
+#include "misc/MPIer.hpp"
 #include "boost/program_options.hpp"
 
 using namespace mqc;
@@ -42,7 +43,7 @@ hamiltonian_t hami;
 
 bool argparse(int argc, char** argv) 
 {
-    /*
+    /**
      * parse cmd arguments
      */
     po::options_description desc("Allowed options");
@@ -78,7 +79,7 @@ bool argparse(int argc, char** argv)
 
 
 vector<trajectory_t> gen_swarm(int Ntraj) {
-    /*
+    /**
      * generate a swarm of trajectories
      */
     vector<complex<double>> init_c(edim, matrixop::ZEROZ);
@@ -99,7 +100,7 @@ vector<trajectory_t> gen_swarm(int Ntraj) {
 }
 
 bool check_end(const trajectory_t& traj) {
-    /*
+    /**
      * determine if a trajectory reaches the end of its simulation
      */
     return (traj.get_r()[0] > 8.0 and traj.get_v()[0] > 0.0) 
@@ -108,17 +109,24 @@ bool check_end(const trajectory_t& traj) {
 
 
 void run() {
-    /*
+    /**
      * run simulation
      */
+
+    // --- parameters --- //
+
+    const int my_Ntraj = MPIer::assign_job(Ntraj).size();
     recorder_t recorder;
-    vector<trajectory_t> swarm = gen_swarm(Ntraj);
+
+    // --- simulation --- //
+
+    vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
     for (int istep(0); istep < Nstep; ++istep) {
         // recording
         if (istep % output_step == 0) {
             recorder.stamp(swarm);
             if (all_of(swarm.begin(), swarm.end(), check_end)) {
-                // check if all trajectories get end
+                // simulation completes
                 for (int irec(istep / output_step); irec < Nstep / output_step; ++irec) {
                     recorder.stamp(swarm);
                 }
@@ -135,76 +143,110 @@ void run() {
             }
         }
     }
+    MPIer::barrier();
 
-    // --- collecting --- // 
+    // --- collect data --- // 
 
-
-
-
-    // --- output --- //
-
-    // header
-    hami.output_params();
-    ioer::info("# simulation paras: ",  
-    " ndim = ", ndim,
-    " edim = ", edim,
-    " mass = ", mass,
-    " Ntraj = ", Ntraj,
-    " Nstep = ", Nstep,
-    " output_step = ", output_step,
-    " dt = ", dt,
-    " init_r = ", init_r,
-    " init_p = ", init_p,
-    " sigma_r = ", sigma_r,
-    " sigma_p = ", sigma_p,
-    ""
-    );
-    ioer::tabout("# t", "n0T", "n0R", "n1T", "n1R");
-
-    int Nrec = recorder.get_Nrec();
+    const int Nrec = recorder.get_Nrec();
+    vector<vector<int>> sarr_data(Nrec);
+    vector<vector<double>> rarr_data(Nrec);
     for (int irec(0); irec < Nrec; ++irec) {
-        double t = irec * output_step * dt;
         auto sarr = recorder.get_s_by_rec(irec);
         auto rarr = recorder.get_r_by_rec(irec);
-        double n0T = 0.0;
-        double n0R = 0.0;
-        double n1T = 0.0;
-        double n1R = 0.0;
-        for (int itraj(0); itraj < Ntraj; ++itraj) {
-            if (sarr[itraj] == 0) {
-                if (rarr[0+itraj*ndim] < 0.0) {
-                    n0R += 1.0;
+
+        if (MPIer::master) {
+            sarr_data[irec] = move(sarr);
+            rarr_data[irec] = move(rarr);
+        }
+
+        for (int r(1); r < MPIer::size; ++r) {
+            if (MPIer::master) {
+                MPIer::recv(r, sarr, rarr);
+                sarr_data[irec].insert(sarr_data[irec].end(), make_move_iterator(sarr.begin()), make_move_iterator(sarr.end()));
+                rarr_data[irec].insert(rarr_data[irec].end(), make_move_iterator(rarr.begin()), make_move_iterator(rarr.end()));
+            }
+            else if (MPIer::rank == r) {
+                MPIer::send(0, sarr, rarr);
+            }
+            MPIer::barrier();
+        }
+    }
+    MPIer::barrier(); 
+
+    // --- post-procssing & output --- //
+
+    if (MPIer::master) {
+        // header output
+        hami.output_params();
+        ioer::info("# simulation paras: ",  
+                    " ndim = ", ndim,
+                    " edim = ", edim,
+                    " mass = ", mass,
+                    " Ntraj = ", Ntraj,
+                    " Nstep = ", Nstep,
+                    " output_step = ", output_step,
+                    " dt = ", dt,
+                    " init_r = ", init_r,
+                    " init_p = ", init_p,
+                    " sigma_r = ", sigma_r,
+                    " sigma_p = ", sigma_p,
+                    "");
+        ioer::tabout("#", "t", "n0T", "n0R", "n1T", "n1R");
+        // dynamics output
+        for (int irec(0); irec < Nrec; ++irec) {
+            double t = irec * output_step * dt;
+            auto sarr = sarr_data.at(irec);
+            auto rarr = rarr_data.at(irec);
+            double n0T = 0.0;
+            double n0R = 0.0;
+            double n1T = 0.0;
+            double n1R = 0.0;
+            for (int itraj(0); itraj < Ntraj; ++itraj) {
+                if (sarr[itraj] == 0) {
+                    if (rarr[0+itraj*ndim] < 0.0) {
+                        n0R += 1.0;
+                    }
+                    else {
+                        n0T += 1.0;
+                    }
                 }
-                else {
-                    n0T += 1.0;
+                else if (sarr[itraj] == 1) {
+                    if (rarr[0+itraj*ndim] < 0.0) {
+                        n1R += 1.0;
+                    }
+                    else {
+                        n1T += 1.0;
+                    }
                 }
             }
-            else if (sarr[itraj] == 1) {
-                if (rarr[0+itraj*ndim] < 0.0) {
-                    n1R += 1.0;
-                }
-                else {
-                    n1T += 1.0;
-                }
+            n0R /= Ntraj;
+            n0T /= Ntraj;
+            n1R /= Ntraj;
+            n1T /= Ntraj;
+            ioer::tabout("#", t, n0T, n0R, n1T, n1R);
+            // final output
+            if (irec == Nrec - 1) {
+                ioer::tabout(init_p[0], n0T, n0R, n1T, n1R);
             }
         }
-        n0R /= Ntraj;
-        n0T /= Ntraj;
-        n1R /= Ntraj;
-        n1T /= Ntraj;
-        ioer::tabout(t, n0T, n0R, n1T, n1R);
     }
+    MPIer::barrier();
 }
 
 
 int main(int argc, char** argv) {
-    // parse args
+    /**
+     * entry
+     */
+    MPIer::setup();
     if (argparse(argc, argv) == false) {
         return -1;
     }
     randomer::seed(seed);
-    timer::tic();
+    if (MPIer::master) timer::tic();
     run();
-    ioer::info("# ", timer::toc());
+    if (MPIer::master) ioer::info("# ", timer::toc());
+    MPIer::barrier();
+    MPIer::finalize();
     return 0;
 }
