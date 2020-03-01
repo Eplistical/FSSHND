@@ -174,11 +174,11 @@ void run() {
         for (int r(1); r < MPIer::size; ++r) {
             if (MPIer::master) {
                 MPIer::recv(r, sarr, rarr, varr, KEarr, PEarr);
-                sarr_data[irec].insert(sarr_data[irec].end(), make_move_iterator(sarr.begin()), make_move_iterator(sarr.end()));
-                rarr_data[irec].insert(rarr_data[irec].end(), make_move_iterator(rarr.begin()), make_move_iterator(rarr.end()));
-                varr_data[irec].insert(varr_data[irec].end(), make_move_iterator(varr.begin()), make_move_iterator(varr.end()));
-                KEarr_data[irec].insert(KEarr_data[irec].end(), make_move_iterator(KEarr.begin()), make_move_iterator(KEarr.end()));
-                PEarr_data[irec].insert(PEarr_data[irec].end(), make_move_iterator(PEarr.begin()), make_move_iterator(PEarr.end()));
+                sarr_data[irec].insert(sarr_data[irec].end(), sarr.begin(), sarr.end());
+                rarr_data[irec].insert(rarr_data[irec].end(), rarr.begin(), rarr.end());
+                varr_data[irec].insert(varr_data[irec].end(), varr.begin(), varr.end());
+                KEarr_data[irec].insert(KEarr_data[irec].end(), KEarr.begin(), KEarr.end());
+                PEarr_data[irec].insert(PEarr_data[irec].end(), PEarr.begin(), PEarr.end());
             }
             else if (MPIer::rank == r) {
                 MPIer::send(0, sarr, rarr, varr, KEarr, PEarr);
