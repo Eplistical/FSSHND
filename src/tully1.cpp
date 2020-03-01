@@ -12,6 +12,7 @@
 #include "misc/ioer.hpp"
 #include "misc/timer.hpp"
 #include "misc/MPIer.hpp"
+#include "misc/fmtstring.hpp"
 #include "boost/program_options.hpp"
 
 using namespace mqc;
@@ -35,13 +36,14 @@ int Nstep = 100000;
 int output_step = 1000;
 double dt = 0.1;
 bool enable_hop = true;
+bool enable_log = true;
 vector<double> potential_params;
 int seed = 42;
 unique_ptr<hamiltonian_t> hami;
 
 
-bool setup_params() {
-    /*
+void setup_params() {
+    /**
      * check & setup parameters for the simulation 
      */
     // check
@@ -58,7 +60,6 @@ bool setup_params() {
     if (not potential_params.empty()) {
         hami->set_params(potential_params);
     }
-    return true;
 }
 
 bool argparse(int argc, char** argv) 
@@ -80,6 +81,8 @@ bool argparse(int argc, char** argv)
         ("sigma_p", po::value<decltype(sigma_p)>(&sigma_p)->multitoken(), "sigma_p vector")
         ("init_s", po::value<decltype(init_s)>(&init_s), "init_s")
         ("potential_params", po::value<decltype(potential_params)>(&potential_params)->multitoken(), "potential_params vector")
+        ("enable_hop", po::value<decltype(enable_hop)>(&enable_hop), "enable hop")
+        ("enable_log", po::value<decltype(enable_log)>(&enable_log), "enable log")
         ("seed", po::value<decltype(seed)>(&seed), "random seed")
         ;
     po::variables_map vm; 
@@ -90,10 +93,17 @@ bool argparse(int argc, char** argv)
         std::cout << desc << std::endl;
         return false;
     }
-    // setup parameters
-    return setup_params();
+    return true;
 }
 
+void logging(const string& msg) {
+    /**
+     * print out log message
+     */
+    if (MPIer::master) {
+        ioer::info(msg);
+    }
+}
 
 
 vector<trajectory_t> gen_swarm(int Ntraj) {
@@ -131,17 +141,23 @@ void run() {
      * run simulation
      */
 
-    // --- parameters --- //
+    // --- setup --- //
 
+    logging("# setting up simulation...");
+    setup_params();
     const int my_Ntraj = MPIer::assign_job(Ntraj).size();
     recorder_t recorder;
 
     // --- simulation --- //
 
+    logging("# initializing trajectories ...");
     vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
+
+    logging("# simulating ...");
     for (int istep(0); istep < Nstep; ++istep) {
         // recording
         if (istep % output_step == 0) {
+            logging(misc::fmtstring("# step %d", istep));
             recorder.stamp(swarm);
             if (all_of(swarm.begin(), swarm.end(), check_end)) {
                 // simulation completes
@@ -165,6 +181,7 @@ void run() {
 
     // --- collect data --- // 
 
+    logging("# collecting data ...");
     const int Nrec = recorder.get_Nrec();
     vector<vector<int>> sarr_data(Nrec);
     vector<vector<double>> rarr_data(Nrec);
@@ -205,6 +222,7 @@ void run() {
 
     // --- post-procssing & output --- //
 
+    logging("# postprocessing ...");
     if (MPIer::master) {
         // header output
         hami->output_params();
@@ -220,6 +238,8 @@ void run() {
                     " init_p = ", init_p,
                     " sigma_r = ", sigma_r,
                     " sigma_p = ", sigma_p,
+                    " enable_hop = ", enable_hop,
+                    " enable_log = ", enable_log,
                     "");
         ioer::tabout("#", "t", 
                 "n0T", "n0R", "n1T", "n1R",

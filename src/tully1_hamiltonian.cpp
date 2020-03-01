@@ -25,12 +25,12 @@ namespace mqc {
         "# paramters: "
         "# { A, B, C, D, Wx, Wy } \n"
         ;
-        m_params.at("A") = 0.01;
-        m_params.at("B") = 1.6;
-        m_params.at("C") = 0.005;
-        m_params.at("D") = 1.0;
-        m_params.at("Wx") = 0.0;
-        m_params.at("Wy") = 0.0;
+        m_params["A"] = 0.01;
+        m_params["B"] = 1.6;
+        m_params["C"] = 0.005;
+        m_params["D"] = 1.0;
+        m_params["Wx"] = 0.0;
+        m_params["Wy"] = 0.0;
     }
 
 
