@@ -68,6 +68,9 @@ bool argparse(int argc, char** argv)
     po::notify(vm);    
 
     // check
+    if (not potential_params.empty()) {
+        hami.set_params(potential_params);
+    }
 
     if (vm.count("help")) {
         std::cout << desc << std::endl;

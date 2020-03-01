@@ -1,6 +1,6 @@
 CXX = g++ 
 MPICXX = mpicxx
-OPT = -O0
+OPT = -O3
 
 LIBS += -L./misc -lmisc
 LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran 
