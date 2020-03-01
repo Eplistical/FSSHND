@@ -13,8 +13,7 @@ namespace mqc {
 
 
     Tully1_Hamiltonian::Tully1_Hamiltonian() 
-    : Hamiltonian(2)
-    { 
+    : Hamiltonian(2) { 
         m_doc = 
         "# 2D Tully1 Hamiltoinan \n"
         "# H_{00} = A * [1 - exp(-Bx)], for x >= 0 \n"
