@@ -270,6 +270,9 @@ void run() {
             n1R /= Ntraj;
             n1T /= Ntraj;
 
+            KE /= Ntraj;
+            PE /= Ntraj;
+
             ioer::tabout("#", t, 
                     n0T, n0R, n1T, n1R,
                     px0T, py0T, px0R, py0R,
@@ -278,7 +281,12 @@ void run() {
                     );
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(init_p[0], n0T, n0R, n1T, n1R);
+                ioer::tabout(init_p[0], t, 
+                        n0T, n0R, n1T, n1R,
+                        px0T, py0T, px0R, py0R,
+                        px1T, py1T, px1R, py1R,
+                        KE + PE
+                        );
             }
         }
     }
