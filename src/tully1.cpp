@@ -153,23 +153,35 @@ void run() {
     const int Nrec = recorder.get_Nrec();
     vector<vector<int>> sarr_data(Nrec);
     vector<vector<double>> rarr_data(Nrec);
+    vector<vector<double>> varr_data(Nrec);
+    vector<vector<double>> KEarr_data(Nrec);
+    vector<vector<double>> PEarr_data(Nrec);
     for (int irec(0); irec < Nrec; ++irec) {
         auto sarr = recorder.get_s_by_rec(irec);
         auto rarr = recorder.get_r_by_rec(irec);
+        auto varr = recorder.get_v_by_rec(irec);
+        auto KEarr = recorder.get_KE_by_rec(irec);
+        auto PEarr = recorder.get_PE_by_rec(irec);
 
         if (MPIer::master) {
             sarr_data[irec] = move(sarr);
             rarr_data[irec] = move(rarr);
+            varr_data[irec] = move(varr);
+            KEarr_data[irec] = move(KEarr);
+            PEarr_data[irec] = move(PEarr);
         }
 
         for (int r(1); r < MPIer::size; ++r) {
             if (MPIer::master) {
-                MPIer::recv(r, sarr, rarr);
+                MPIer::recv(r, sarr, rarr, varr, KEarr, PEarr);
                 sarr_data[irec].insert(sarr_data[irec].end(), make_move_iterator(sarr.begin()), make_move_iterator(sarr.end()));
                 rarr_data[irec].insert(rarr_data[irec].end(), make_move_iterator(rarr.begin()), make_move_iterator(rarr.end()));
+                varr_data[irec].insert(varr_data[irec].end(), make_move_iterator(varr.begin()), make_move_iterator(varr.end()));
+                KEarr_data[irec].insert(KEarr_data[irec].end(), make_move_iterator(KEarr.begin()), make_move_iterator(KEarr.end()));
+                PEarr_data[irec].insert(PEarr_data[irec].end(), make_move_iterator(PEarr.begin()), make_move_iterator(PEarr.end()));
             }
             else if (MPIer::rank == r) {
-                MPIer::send(0, sarr, rarr);
+                MPIer::send(0, sarr, rarr, varr, KEarr, PEarr);
             }
             MPIer::barrier();
         }
@@ -194,39 +206,76 @@ void run() {
                     " sigma_r = ", sigma_r,
                     " sigma_p = ", sigma_p,
                     "");
-        ioer::tabout("#", "t", "n0T", "n0R", "n1T", "n1R");
+        ioer::tabout("#", "t", 
+                "n0T", "n0R", "n1T", "n1R",
+                "px0T", "py0T", "px0R", "py0R",
+                "px1T", "py1T", "px1R", "py1R",
+                "Etot"
+                );
         // dynamics output
         for (int irec(0); irec < Nrec; ++irec) {
             double t = irec * output_step * dt;
-            auto sarr = sarr_data.at(irec);
-            auto rarr = rarr_data.at(irec);
-            double n0T = 0.0;
-            double n0R = 0.0;
-            double n1T = 0.0;
-            double n1R = 0.0;
+            const auto& sarr = sarr_data.at(irec);
+            const auto& rarr = rarr_data.at(irec);
+            const auto& varr = varr_data.at(irec);
+            const auto& KEarr = KEarr_data.at(irec);
+            const auto& PEarr = PEarr_data.at(irec);
+            // population
+            double n0T = 0.0, n0R = 0.0, n1T = 0.0, n1R = 0.0;
+            // momentum 
+            double px0T = 0.0, py0T = 0.0, px0R = 0.0, py0R = 0.0;
+            double px1T = 0.0, py1T = 0.0, px1R = 0.0, py1R = 0.0;
+            // enegry
+            double KE = 0.0, PE = 0.0;
             for (int itraj(0); itraj < Ntraj; ++itraj) {
-                if (sarr[itraj] == 0) {
-                    if (rarr[0+itraj*ndim] < 0.0) {
+                if (sarr.at(itraj) == 0) {
+                    if (rarr.at(0+itraj*ndim) < 0.0) {
                         n0R += 1.0;
+                        px0R += varr.at(0+itraj*ndim);
+                        py0R += varr.at(1+itraj*ndim);
                     }
                     else {
                         n0T += 1.0;
+                        px0T += varr.at(0+itraj*ndim);
+                        py0T += varr.at(1+itraj*ndim);
                     }
                 }
-                else if (sarr[itraj] == 1) {
-                    if (rarr[0+itraj*ndim] < 0.0) {
+                else if (sarr.at(itraj) == 1) {
+                    if (rarr.at(0+itraj*ndim) < 0.0) {
                         n1R += 1.0;
+                        px1R += varr.at(0+itraj*ndim);
+                        py1R += varr.at(1+itraj*ndim);
                     }
                     else {
                         n1T += 1.0;
+                        px1T += varr.at(0+itraj*ndim);
+                        py1T += varr.at(1+itraj*ndim);
                     }
                 }
+                KE += KEarr.at(itraj);
+                PE += PEarr.at(itraj);
             }
+
+            px0R *= (n0R == 0 ? 0.0 : (mass / n0R));
+            py0R *= (n0R == 0 ? 0.0 : (mass / n0R));
+            px0T *= (n0T == 0 ? 0.0 : (mass / n0T));
+            py0T *= (n0T == 0 ? 0.0 : (mass / n0T));
+            px1R *= (n1R == 0 ? 0.0 : (mass / n1R));
+            py1R *= (n1R == 0 ? 0.0 : (mass / n1R));
+            px1T *= (n1T == 0 ? 0.0 : (mass / n1T));
+            py1T *= (n1T == 0 ? 0.0 : (mass / n1T));
+
             n0R /= Ntraj;
             n0T /= Ntraj;
             n1R /= Ntraj;
             n1T /= Ntraj;
-            ioer::tabout("#", t, n0T, n0R, n1T, n1R);
+
+            ioer::tabout("#", t, 
+                    n0T, n0R, n1T, n1R,
+                    px0T, py0T, px0R, py0R,
+                    px1T, py1T, px1R, py1R,
+                    KE + PE
+                    );
             // final output
             if (irec == Nrec - 1) {
                 ioer::tabout(init_p[0], n0T, n0R, n1T, n1R);
