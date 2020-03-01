@@ -38,6 +38,7 @@ namespace mqc {
             void set_doc(const std::string& doc) { m_doc = doc; }
 
             std::map<std::string, double> get_params() const noexcept { return m_params; }
+            double get_param(const std::string& key) const { return m_params.at(key); }
             void set_params(const std::map<std::string, double>& params) { m_params = params; }
 
         protected:

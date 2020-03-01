@@ -70,7 +70,7 @@ namespace mqc {
             int m_edim;
             int m_Ntraj;
             int m_Nrec;
-            // history format: [traj1(t1), traj2(t1), ..., trajN(t1), traj1(t2), ..., trajN(t2), ...]
+            // history format: : traj1(t1), traj2(t1), ..., trajN(t1), traj1(t2), ..., trajN(t2), ...
             std::vector<trajectory_t> m_history; 
     };
 
@@ -173,7 +173,7 @@ namespace mqc {
             /*
              * extract r for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -200,7 +200,7 @@ namespace mqc {
             /*
              * extract r for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
@@ -227,7 +227,7 @@ namespace mqc {
             /*
              * extract v for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -254,7 +254,7 @@ namespace mqc {
             /*
              * extract v for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
@@ -281,7 +281,7 @@ namespace mqc {
             /*
              * extract c for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -308,7 +308,7 @@ namespace mqc {
             /*
              * extract c for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
@@ -335,7 +335,7 @@ namespace mqc {
             /*
              * extract s for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -361,7 +361,7 @@ namespace mqc {
             /*
              * extract s for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
@@ -387,7 +387,7 @@ namespace mqc {
             /*
              * extract t for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -413,7 +413,7 @@ namespace mqc {
             /*
              * extract t for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
@@ -439,7 +439,7 @@ namespace mqc {
             /*
              * extract KE for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -465,7 +465,7 @@ namespace mqc {
             /*
              * extract KE for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
@@ -491,7 +491,7 @@ namespace mqc {
             /*
              * extract PE for the itraj^th trajectory
              *  if itraj == -1, extract for all trajectories
-             *  return format will be [traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
@@ -517,7 +517,7 @@ namespace mqc {
             /*
              * extract PE for the irec^th record
              *  if irec == -1, extract for all records
-             *  return format will be [traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)]
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
             misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");

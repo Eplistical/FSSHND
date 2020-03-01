@@ -176,12 +176,12 @@ namespace mqc {
             for (int j(0); j < m_edim; ++j) {
                 for (int k(0); k < m_edim; ++k) {
                     for (int i(0); i < m_ndim; ++i) {
-                        rk4_mat[j+k*m_edim] -= m_v[i] * m_dc[i][j+k*m_edim];
+                        rk4_mat.at(j+k*m_edim) -= m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
                     }
                 }
             }
             for (int j(0); j < m_edim; ++j) {
-                rk4_mat[j+j*m_edim] -= matrixop::IMAGIZ * m_eva[j];
+                rk4_mat.at(j+j*m_edim) -= matrixop::IMAGIZ * m_eva.at(j);
             }
             std::vector<std::complex<double>> k1, k2, k3, k4;
             k1 = dt * matrixop::matmat(rk4_mat, m_c, m_edim);
@@ -196,7 +196,7 @@ namespace mqc {
             // 1st force update
             tot_force = cal_berry_force(); // berry force
             for (int i(0); i < m_ndim; ++i) {
-                tot_force[i] += m_force[i][m_s+m_s*m_edim].real(); // adiabatic force
+                tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
             }
             // 1st conf update
             m_v += 0.5 * dt / m_mass * tot_force;
@@ -205,7 +205,7 @@ namespace mqc {
             // 2nd force update 
             tot_force = cal_berry_force(); // berry force
             for (int i(0); i < m_ndim; ++i) {
-                tot_force[i] += m_force[i][m_s+m_s*m_edim].real(); // adiabatic force
+                tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
             }
             // 2nd conf update
             m_v += 0.5 * dt / m_mass * tot_force;
@@ -220,9 +220,9 @@ namespace mqc {
              */
             std::complex<double> v_dot_dc = matrixop::ZEROZ;
             for (int i(0); i < m_ndim; ++i) {
-                v_dot_dc += m_v[i] * m_dc[i][to+from*m_edim];
+                v_dot_dc += m_v.at(i) * m_dc.at(i).at(to+from*m_edim);
             }
-            return -2.0 * dt * (m_c[from] * conj(m_c[to]) * v_dot_dc).real() / (m_c[from] * conj(m_c[from])).real();
+            return -2.0 * dt * (m_c.at(from) * conj(m_c.at(to)) * v_dot_dc).real() / (m_c.at(from) * conj(m_c.at(from))).real();
         }
 
     template <typename HamiltonianType>
@@ -235,20 +235,20 @@ namespace mqc {
             // calculate hop probablities
             const int from = m_s;
             std::vector<double> prob(m_edim, 0.0);
-            prob[from] = 1.0;
+            prob.at(from) = 1.0;
             for (int to(0); to < m_edim; ++to) {
                 if (to != from) {
-                    prob[to] = cal_hop_prob(from, to, dt);
-                    prob[from] -= prob[to];
+                    prob.at(to) = cal_hop_prob(from, to, dt);
+                    prob.at(from) -= prob.at(to);
                 }
             }
-            misc::confirm<misc::ValueError>(prob[from] > 0.0, "hopper: tot prob > 1.0, dt too large.");
+            misc::confirm<misc::ValueError>(prob.at(from) > 0.0, "hopper: tot prob > 1.0, dt too large.");
             // determine whether hop happens 
             const double randnum = randomer::rand(0.0, 1.0);
             double accu = 0.0;
             int to = 0;
             while (to < m_edim) {
-                accu += prob[to];
+                accu += prob.at(to);
                 if (accu > randnum) {
                     break;
                 }
@@ -261,21 +261,21 @@ namespace mqc {
                 std::vector<double> n_rescale(m_ndim, 0.0);
                 
                 // x-direction rescaling
-                n_rescale[0] = 1.0;
+                n_rescale.at(0) = 1.0;
 
                 /*
                 // Re(dc_jk * (v \dot dc_kj)) rescaling
                 std::complex<double> v_dot_dc = matrixop::ZEROZ;
                 for (int i(0); i < m_ndim; ++i) {
-                    v_dot_dc += m_v[i] * m_dc[i][to+from*m_edim];
+                    v_dot_dc += m_v.at(i) * m_dc.at(i).at(to+from*m_edim);
                 }
                 for (int i(0); i < m_ndim; ++i) {
-                    n_rescale[i] = (m_dc[i][from+to*m_edim] * v_dot_dc).real();
+                    n_rescale.at(i) = (m_dc.at(i).at(from+to*m_edim) * v_dot_dc).real();
                 }
                 */
 
                 // implement momemtum rescaling
-                const double dE = m_eva[to] - m_eva[from];
+                const double dE = m_eva.at(to) - m_eva.at(from);
                 if (norm(n_rescale) > 1e-40) {
                     std::vector<double> vn = component(m_v, n_rescale);
                     double vn_norm = norm(vn);
@@ -332,10 +332,10 @@ namespace mqc {
                 if (k != m_s) {
                     v_dot_dc = 0.0;
                     for (int i(0); i < m_ndim; ++i) {
-                        v_dot_dc += m_v[i] * m_dc[i][k+m_s*m_edim];
+                        v_dot_dc += m_v.at(i) * m_dc.at(i).at(k+m_s*m_edim);
                     }
                     for (int i(0); i < m_ndim; ++i) {
-                        F_berry[i] += (m_dc[i][m_s+k*m_edim] * v_dot_dc).imag();
+                        F_berry.at(i) += (m_dc.at(i).at(m_s+k*m_edim) * v_dot_dc).imag();
                     }
                 }
             }

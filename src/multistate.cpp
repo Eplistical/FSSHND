@@ -3,7 +3,7 @@
 #include <complex>
 #include <memory>
 #include <vector>
-#include "tully1_hamiltonian.hpp"
+#include "multistate_hamiltonian.hpp"
 #include "fssh_trajectory.hpp"
 #include "traj_recorder.hpp"
 #include "misc/vector.hpp"
@@ -18,18 +18,19 @@ using namespace mqc;
 using namespace std;
 namespace po = boost::program_options;
 
-using hamiltonian_t = Tully1_Hamiltonian;
+using hamiltonian_t = Multistate_Hamiltonian;
 using trajectory_t = FSSH_Trajectory<hamiltonian_t>;
 using recorder_t = traj_recorder<trajectory_t>;
 
-int ndim = 2;
-int edim = 2;
-double mass = 2000.0;
+int Nsite;
+int ndim;
+int edim;
+double mass;
 int init_s = 0;
-vector<double> init_r { -6.0, 0.0 };
-vector<double> init_p { 20.0, 0.0 };
-vector<double> sigma_r { 0.5, 0.5 };
-vector<double> sigma_p { 1.0, 1.0 };
+vector<double> init_r;
+vector<double> init_p;
+vector<double> sigma_r;
+vector<double> sigma_p;
 int Ntraj = 2000;
 int Nstep = 100000;
 int output_step = 1000;
@@ -39,12 +40,12 @@ vector<double> potential_params;
 int seed = 42;
 unique_ptr<hamiltonian_t> hami;
 
-
 bool setup_params() {
     /*
      * check & setup parameters for the simulation 
      */
     // check
+    misc::confirm<misc::ValueError>(Nsite > 1, "Nsite must > 1.");
     misc::confirm<misc::ValueError>(init_r.size() == init_p.size()  and init_r.size() == sigma_r.size() and init_p.size() == sigma_p.size(), 
                                     "argparse: init_r, init_p, sigma_r, sigma_p must have the same sizes.");
     misc::confirm<misc::ValueError>(init_s >= 0, "init_s must >= 0");
@@ -53,11 +54,13 @@ bool setup_params() {
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
     misc::confirm<misc::ValueError>(Nstep > 0, "Nstep must > 0.");
     misc::confirm<misc::ValueError>(Nstep > output_step, "Nstep must > output_step.");
+    misc::confirm<misc::ValueError>(not potential_params.empty(), "potential_params cannot be empty.");
     // setup
-    hami = make_unique<hamiltonian_t>();
-    if (not potential_params.empty()) {
-        hami->set_params(potential_params);
-    }
+    ndim = Nsite;
+    edim = Nsite;
+    hami = make_unique<hamiltonian_t>(edim);
+    hami->set_params(potential_params);
+    mass = hami->get_param("MASS");
     return true;
 }
 
@@ -93,7 +96,6 @@ bool argparse(int argc, char** argv)
     // setup parameters
     return setup_params();
 }
-
 
 
 vector<trajectory_t> gen_swarm(int Ntraj) {

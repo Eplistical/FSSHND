@@ -28,7 +28,7 @@ namespace mqc {
         int i = 0;
         auto it = m_params.begin();
         while (it != m_params.end()) {
-            it->second = params[i];
+            it->second = params.at(i);
             std::advance(it, 1);
             i += 1;
         }
@@ -69,9 +69,9 @@ namespace mqc {
             if (not lastevt.empty()) {
                 auto tmp = matrixop::matCmat(lastevt, evt, m_dim);
                 for (int j = 0; j < m_dim; ++j) {
-                    std::complex<double> eip = tmp[j+j*m_dim] / abs(tmp[j+j*m_dim]);
+                    std::complex<double> eip = tmp.at(j+j*m_dim) / abs(tmp.at(j+j*m_dim));
                     for (int k = 0; k < m_dim; ++k) {
-                        evt[k+j*m_dim] /= eip;
+                        evt.at(k+j*m_dim) /= eip;
                     }
                 }
             }
@@ -81,16 +81,16 @@ namespace mqc {
             dc.resize(ndim);
             force.resize(ndim);
             for (int i = 0; i < ndim; ++i) {
-                dc[i] = matrixop::matCmatmat(evt, nablaH[i], evt, m_dim, m_dim);
-                force[i].resize(m_dim * m_dim);
+                dc.at(i) = matrixop::matCmatmat(evt, nablaH.at(i), evt, m_dim, m_dim);
+                force.at(i).resize(m_dim * m_dim);
                 for (int j = 0; j < m_dim; ++j) {
                     for (int k = 0; k < m_dim; ++k) {
-                        force[i][j+k*m_dim] = -dc[i][j+k*m_dim];
+                        force.at(i).at(j+k*m_dim) = -dc.at(i).at(j+k*m_dim);
                         if (j == k) {
-                            dc[i][j+k*m_dim] = matrixop::ZEROZ;
+                            dc.at(i).at(j+k*m_dim) = matrixop::ZEROZ;
                         }
                         else {
-                            dc[i][j+k*m_dim] /= (eva[k] - eva[j]);
+                            dc.at(i).at(j+k*m_dim) /= (eva.at(k) - eva.at(j));
                         }
                     }
                 }

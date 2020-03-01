@@ -23,25 +23,25 @@ namespace mqc {
         "# parameters: "
         "# { MASS, OMEGA, OMEGA_T, VC, W, X0 } \n"
         ;
-        m_params["MASS"] = 1.0;
-        m_params["OMEGA"] = 1.0;
-        m_params["OMEGA_T"] = 2.0;
-        m_params["VC"] = 0.2;
-        m_params["W"] = 0.0;
-        m_params["X0"] = 2.0;
+        m_params.at("MASS") = 1.0;
+        m_params.at("OMEGA") = 1.0;
+        m_params.at("OMEGA_T") = 2.0;
+        m_params.at("VC") = 0.2;
+        m_params.at("W") = 0.0;
+        m_params.at("X0") = 2.0;
     }
 
 
     // --- quantities --- //
 
     double Multistate_Hamiltonian::cal_phi(const std::vector<double>& r, int k) const {
-        return m_params.at("W") * (r[k] + r[k+1]);
+        return m_params.at("W") * (r.at(k) + r.at(k+1));
     }
 
     std::vector<double> Multistate_Hamiltonian::cal_nabla_phi(const std::vector<double>& r, int k) const {
         std::vector<double> nabla_phi(m_dim, 0.0);
-        nabla_phi[k] = m_params.at("W");
-        nabla_phi[k+1] = m_params.at("W");
+        nabla_phi.at(k) = m_params.at("W");
+        nabla_phi.at(k+1) = m_params.at("W");
     }
 
     std::vector<std::complex<double>> Multistate_Hamiltonian::cal_H(const std::vector<double>& r) const {
@@ -53,20 +53,20 @@ namespace mqc {
         misc::confirm<misc::ValueError>(m_dim == r.size(), "cal_H: the size of r must equal to the dim of Hamiltonian.");
         // diagonal terms
         std::vector<std::complex<double>> H(m_dim * m_dim, matrixop::ZEROZ);
-        const double r_norm = std::accumulate(r.begin(), r.end(), 0.0,  [](const double accu, const double x) {
+        const double r_norm = std::accumulate(r.begin(), r.end(), 0.0,  .at()(const double accu, const double x) {
             return accu + std::pow(x, 2);
         });
         for (int k(0); k < m_dim; ++k) {
-            H[k+k*m_dim] = 0.5 * m_params.at("MASS") * (
-                std::pow(m_params.at("OMEGA"), 2) * (r_norm - std::pow(r[k], 2)) 
-                + std::pow(m_params.at("OMEGA_T"), 2) * pow(r[k] - m_params.at("X0"), 2)
+            H.at(k+k*m_dim) = 0.5 * m_params.at("MASS") * (
+                std::pow(m_params.at("OMEGA"), 2) * (r_norm - std::pow(r.at(k), 2)) 
+                + std::pow(m_params.at("OMEGA_T"), 2) * pow(r.at(k) - m_params.at("X0"), 2)
                 );
         }
         // off-diagonal terms
         for (int k(0); k < m_dim - 1; ++k) {
             const double phi = cal_phi(r, k);
-            H[k+(k+1)*m_dim] = m_params.at("VC") * std::exp(matrixop::IMAGIZ * phi);
-            H[(k+1)+k*m_dim] = std::conj(H[k+(k+1)*m_dim]);
+            H.at(k+(k+1)*m_dim) = m_params.at("VC") * std::exp(matrixop::IMAGIZ * phi);
+            H.at((k+1)+k*m_dim) = std::conj(H.at(k+(k+1)*m_dim));
         }
         return H;
     }
