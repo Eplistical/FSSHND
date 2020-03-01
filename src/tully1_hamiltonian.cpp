@@ -15,7 +15,17 @@ namespace mqc {
     Tully1_Hamiltonian::Tully1_Hamiltonian() 
     : Hamiltonian(2)
     { 
-        m_doc = "Tully1 2D Hamiltoinan with complex part [phi = Wx * x + Wy * y] ";
+        m_doc = 
+        "# 2D Tully1 Hamiltoinan \n"
+        "# H_{00} = A * [1 - exp(-Bx)], for x >= 0 \n"
+        "# H_{00} = -A * [1 - exp(Bx)], for x < 0 \n"
+        "# H_{11} = -H_{00} \n"
+        "# H_{01} = C * exp(-D * x^2) * exp(i * phi) \n"
+        "# H_{10} = conj(H_{01}) \n"
+        "# phi = Wx * x + Wy * y \n"
+        "# paramters: "
+        "# { A, B, C, D, Wx, Wy } \n"
+        ;
         m_params["A"] = 0.01;
         m_params["B"] = 1.6;
         m_params["C"] = 0.005;

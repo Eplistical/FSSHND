@@ -2,6 +2,7 @@
 #include <iostream>
 #include <complex>
 #include <iterator>
+#include <string>
 #include "misc/vector.hpp"
 #include "misc/matrixop.hpp"
 #include "misc/crasher.hpp"
@@ -37,11 +38,15 @@ namespace mqc {
         /*
          * output parameters
          */
-        std::cout << "# " << m_doc << ": ";
+        std::cout << std::string(32, '#') << std::endl;
+        std::cout << m_doc;
+        std::cout << std::string(32, '#') << std::endl;
+        std::cout << "# ";
         for (const auto& it : m_params) {
             std::cout << it.first << " = " << it.second << " ";
         }
         std::cout << std::endl;
+        std::cout << std::string(32, '#') << std::endl;
     }
 
 

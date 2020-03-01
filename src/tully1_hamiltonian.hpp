@@ -2,7 +2,7 @@
 #define _TULLY1_HAMILTONIAN_HPP
 
 /* 
- * Hamiltonian base class
+ * Tully1 Hamiltonian 
  */
 
 #include <vector>
