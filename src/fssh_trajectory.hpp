@@ -242,7 +242,7 @@ namespace mqc {
                     prob.at(from) -= prob.at(to);
                 }
             }
-            misc::confirm<misc::ValueError>(prob.at(from) > 0.0, "hopper: tot prob > 1.0, dt too large.");
+            misc::confirm<misc::ValueError>(prob.at(from) > 0.3, "hopper: hop prob too large, try a smaller dt.");
             // determine whether hop happens 
             const double randnum = randomer::rand(0.0, 1.0);
             double accu = 0.0;

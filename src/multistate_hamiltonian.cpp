@@ -23,12 +23,12 @@ namespace mqc {
         "# parameters: "
         "# { MASS, OMEGA, OMEGA_T, VC, W, X0 } \n"
         ;
-        m_params.at("MASS") = 1.0;
-        m_params.at("OMEGA") = 1.0;
-        m_params.at("OMEGA_T") = 2.0;
-        m_params.at("VC") = 0.2;
-        m_params.at("W") = 0.0;
-        m_params.at("X0") = 2.0;
+        m_params["MASS"] = 2000.0;
+        m_params["OMEGA"] = 1.0;
+        m_params["OMEGA_T"] = 2.0;
+        m_params["VC"] = 0.2;
+        m_params["W"] = 0.0;
+        m_params["X0"] = 2.0;
     }
 
 
@@ -42,6 +42,7 @@ namespace mqc {
         std::vector<double> nabla_phi(m_dim, 0.0);
         nabla_phi.at(k) = m_params.at("W");
         nabla_phi.at(k+1) = m_params.at("W");
+        return nabla_phi;
     }
 
     std::vector<std::complex<double>> Multistate_Hamiltonian::cal_H(const std::vector<double>& r) const {
@@ -53,7 +54,7 @@ namespace mqc {
         misc::confirm<misc::ValueError>(m_dim == r.size(), "cal_H: the size of r must equal to the dim of Hamiltonian.");
         // diagonal terms
         std::vector<std::complex<double>> H(m_dim * m_dim, matrixop::ZEROZ);
-        const double r_norm = std::accumulate(r.begin(), r.end(), 0.0,  .at()(const double accu, const double x) {
+        const double r_norm = std::accumulate(r.begin(), r.end(), 0.0, [](const double accu, const double x) -> double {
             return accu + std::pow(x, 2);
         });
         for (int k(0); k < m_dim; ++k) {

@@ -105,7 +105,6 @@ void logging(const string& msg) {
     }
 }
 
-
 vector<trajectory_t> gen_swarm(int Ntraj) {
     /**
      * generate a swarm of trajectories
@@ -152,7 +151,6 @@ void run() {
 
     logging("# initializing trajectories ...");
     vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
-
     logging("# simulating ...");
     for (int istep(0); istep < Nstep; ++istep) {
         // recording
@@ -316,7 +314,7 @@ void run() {
                     );
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(init_p.at(0), t, 
+                ioer::tabout(init_p.at(0),
                         n0T, n0R, n1T, n1R,
                         px0T, py0T, px0R, py0R,
                         px1T, py1T, px1R, py1R,

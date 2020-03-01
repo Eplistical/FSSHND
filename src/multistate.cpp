@@ -12,6 +12,7 @@
 #include "misc/ioer.hpp"
 #include "misc/timer.hpp"
 #include "misc/MPIer.hpp"
+#include "misc/fmtstring.hpp"
 #include "boost/program_options.hpp"
 
 using namespace mqc;
@@ -22,7 +23,7 @@ using hamiltonian_t = Multistate_Hamiltonian;
 using trajectory_t = FSSH_Trajectory<hamiltonian_t>;
 using recorder_t = traj_recorder<trajectory_t>;
 
-int Nsite;
+int Nsite = 2;
 int ndim;
 int edim;
 double mass;
@@ -32,24 +33,23 @@ vector<double> init_p;
 vector<double> sigma_r;
 vector<double> sigma_p;
 int Ntraj = 2000;
-int Nstep = 100000;
-int output_step = 1000;
+int Nstep = 10000;
+int output_step = 100;
 double dt = 0.1;
 bool enable_hop = true;
 vector<double> potential_params;
 int seed = 42;
 unique_ptr<hamiltonian_t> hami;
 
-bool setup_params() {
+void setup_params() {
     /*
      * check & setup parameters for the simulation 
      */
     // check
     misc::confirm<misc::ValueError>(Nsite > 1, "Nsite must > 1.");
-    misc::confirm<misc::ValueError>(init_r.size() == init_p.size()  and init_r.size() == sigma_r.size() and init_p.size() == sigma_p.size(), 
-                                    "argparse: init_r, init_p, sigma_r, sigma_p must have the same sizes.");
+    misc::confirm<misc::ValueError>(init_r.size() == Nsite and init_r.size() == init_p.size()  and init_r.size() == sigma_r.size() and init_p.size() == sigma_p.size(), 
+                                    "argparse: init_r, init_p, sigma_r, sigma_p must have the same sizes (which should be Nsite).");
     misc::confirm<misc::ValueError>(init_s >= 0, "init_s must >= 0");
-    misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
     misc::confirm<misc::ValueError>(dt > 0.0, "dt must > 0.");
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
     misc::confirm<misc::ValueError>(Nstep > 0, "Nstep must > 0.");
@@ -61,7 +61,7 @@ bool setup_params() {
     hami = make_unique<hamiltonian_t>(edim);
     hami->set_params(potential_params);
     mass = hami->get_param("MASS");
-    return true;
+    misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
 }
 
 bool argparse(int argc, char** argv) 
@@ -72,6 +72,7 @@ bool argparse(int argc, char** argv)
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help", "produce help message")
+        ("Nsite", po::value<decltype(Nsite)>(&Nsite), "# site")
         ("Ntraj", po::value<decltype(Ntraj)>(&Ntraj), "# traj")
         ("Nstep", po::value<decltype(Nstep)>(&Nstep), "# step")
         ("output_step", po::value<decltype(output_step)>(&output_step), "# step for output")
@@ -93,10 +94,17 @@ bool argparse(int argc, char** argv)
         std::cout << desc << std::endl;
         return false;
     }
-    // setup parameters
-    return setup_params();
+    return true;
 }
 
+void logging(const string& msg) {
+    /**
+     * print out log message
+     */
+    if (MPIer::master) {
+        ioer::info(msg);
+    }
+}
 
 vector<trajectory_t> gen_swarm(int Ntraj) {
     /**
@@ -123,8 +131,7 @@ bool check_end(const trajectory_t& traj) {
     /**
      * determine if a trajectory reaches the end of its simulation
      */
-    return (traj.get_r().at(0) > 8.0 and traj.get_v().at(0) > 0.0) 
-        or (traj.get_r().at(0) < -8.0 and traj.get_v().at(0) < 0.0);
+    return false;
 }
 
 
@@ -133,17 +140,22 @@ void run() {
      * run simulation
      */
 
-    // --- parameters --- //
+    // --- setup --- //
 
+    logging("# setting up simulation...");
+    setup_params();
     const int my_Ntraj = MPIer::assign_job(Ntraj).size();
     recorder_t recorder;
 
     // --- simulation --- //
 
+    logging("# initializing trajectories ...");
     vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
+    logging("# simulating ...");
     for (int istep(0); istep < Nstep; ++istep) {
         // recording
         if (istep % output_step == 0) {
+            logging(misc::fmtstring("# step %d", istep));
             recorder.stamp(swarm);
             if (all_of(swarm.begin(), swarm.end(), check_end)) {
                 // simulation completes
@@ -167,6 +179,7 @@ void run() {
 
     // --- collect data --- // 
 
+    logging("# collecting data ...");
     const int Nrec = recorder.get_Nrec();
     vector<vector<int>> sarr_data(Nrec);
     vector<vector<double>> rarr_data(Nrec);
@@ -207,10 +220,12 @@ void run() {
 
     // --- post-procssing & output --- //
 
+    logging("# postprocessing ...");
     if (MPIer::master) {
         // header output
         hami->output_params();
         ioer::info("# simulation paras: ",  
+                    " Nsite = ", Nsite,
                     " ndim = ", ndim,
                     " edim = ", edim,
                     " mass = ", mass,
@@ -224,9 +239,9 @@ void run() {
                     " sigma_p = ", sigma_p,
                     "");
         ioer::tabout("#", "t", 
-                "n0T", "n0R", "n1T", "n1R",
-                "px0T", "py0T", "px0R", "py0R",
-                "px1T", "py1T", "px1R", "py1R",
+                "r", vector<string>(ndim - 1, ""),
+                "p", vector<string>(ndim - 1, ""),
+                "s", 
                 "Etot"
                 );
         // dynamics output
@@ -237,73 +252,34 @@ void run() {
             const auto& varr = varr_data.at(irec);
             const auto& KEarr = KEarr_data.at(irec);
             const auto& PEarr = PEarr_data.at(irec);
-            // population
-            double n0T = 0.0, n0R = 0.0, n1T = 0.0, n1R = 0.0;
-            // momentum 
-            double px0T = 0.0, py0T = 0.0, px0R = 0.0, py0R = 0.0;
-            double px1T = 0.0, py1T = 0.0, px1R = 0.0, py1R = 0.0;
-            // enegry
+            // statistics
+            vector<double> r, p;
+            double s = 0.0;
             double KE = 0.0, PE = 0.0;
             for (int itraj(0); itraj < Ntraj; ++itraj) {
-                if (sarr.at(itraj) == 0) {
-                    if (rarr.at(0+itraj*ndim) < 0.0) {
-                        n0R += 1.0;
-                        px0R += varr.at(0+itraj*ndim);
-                        py0R += varr.at(1+itraj*ndim);
-                    }
-                    else {
-                        n0T += 1.0;
-                        px0T += varr.at(0+itraj*ndim);
-                        py0T += varr.at(1+itraj*ndim);
-                    }
+                s += sarr.at(itraj);
+                if (itraj == 0) {
+                    r = vector<double>(rarr.begin() + itraj * ndim, rarr.begin() + (itraj + 1) * ndim);
+                    p = mass * vector<double>(varr.begin() + itraj * ndim, varr.begin() + (itraj + 1) * ndim);
                 }
-                else if (sarr.at(itraj) == 1) {
-                    if (rarr.at(0+itraj*ndim) < 0.0) {
-                        n1R += 1.0;
-                        px1R += varr.at(0+itraj*ndim);
-                        py1R += varr.at(1+itraj*ndim);
-                    }
-                    else {
-                        n1T += 1.0;
-                        px1T += varr.at(0+itraj*ndim);
-                        py1T += varr.at(1+itraj*ndim);
-                    }
+                else {
+                    r += vector<double>(rarr.begin() + itraj * ndim, rarr.begin() + (itraj + 1) * ndim);
+                    p += mass * vector<double>(varr.begin() + itraj * ndim, varr.begin() + (itraj + 1) * ndim);
                 }
                 KE += KEarr.at(itraj);
                 PE += PEarr.at(itraj);
             }
 
-            px0R *= (n0R == 0 ? 0.0 : (mass / n0R));
-            py0R *= (n0R == 0 ? 0.0 : (mass / n0R));
-            px0T *= (n0T == 0 ? 0.0 : (mass / n0T));
-            py0T *= (n0T == 0 ? 0.0 : (mass / n0T));
-            px1R *= (n1R == 0 ? 0.0 : (mass / n1R));
-            py1R *= (n1R == 0 ? 0.0 : (mass / n1R));
-            px1T *= (n1T == 0 ? 0.0 : (mass / n1T));
-            py1T *= (n1T == 0 ? 0.0 : (mass / n1T));
-
-            n0R /= Ntraj;
-            n0T /= Ntraj;
-            n1R /= Ntraj;
-            n1T /= Ntraj;
-
+            r /= Ntraj;
+            p /= Ntraj;
+            s /= Ntraj;
             KE /= Ntraj;
             PE /= Ntraj;
 
-            ioer::tabout("#", t, 
-                    n0T, n0R, n1T, n1R,
-                    px0T, py0T, px0R, py0R,
-                    px1T, py1T, px1R, py1R,
-                    KE + PE
-                    );
+            ioer::tabout("#", t, r, p, s, KE + PE);
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(init_p.at(0), t, 
-                        n0T, n0R, n1T, n1R,
-                        px0T, py0T, px0R, py0R,
-                        px1T, py1T, px1R, py1R,
-                        KE + PE
-                        );
+                ioer::tabout(r, p, s, KE + PE);
             }
         }
     }
