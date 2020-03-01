@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <complex>
+#include <iterator>
 #include "misc/vector.hpp"
 #include "misc/matrixop.hpp"
 #include "misc/crasher.hpp"
@@ -22,11 +23,12 @@ namespace mqc {
          * set params with a vector
          *  params are ordered alphabetically
          */
-        misc::confirm<misc::ValueError>(params.size() < m_params.size(), "set_params: insufficient params size.");
+        misc::confirm<misc::ValueError>(params.size() >= m_params.size(), "set_params: insufficient params size.");
         int i = 0;
         auto it = m_params.begin();
         while (it != m_params.end()) {
             it->second = params[i];
+            std::advance(it, 1);
             i += 1;
         }
     }
