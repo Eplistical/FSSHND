@@ -260,10 +260,6 @@ namespace mqc {
                 // momentum rescaling direction
                 std::vector<double> n_rescale(m_ndim, 0.0);
                 
-                // x-direction rescaling
-                n_rescale.at(0) = 1.0;
-
-                /*
                 // Re(dc_jk * (v \dot dc_kj)) rescaling
                 std::complex<double> v_dot_dc = matrixop::ZEROZ;
                 for (int i(0); i < m_ndim; ++i) {
@@ -272,25 +268,23 @@ namespace mqc {
                 for (int i(0); i < m_ndim; ++i) {
                     n_rescale.at(i) = (m_dc.at(i).at(from+to*m_edim) * v_dot_dc).real();
                 }
-                */
+                misc::confirm<misc::RuntimeError>(norm(n_rescale) > 1e-40, "hopper: n_rescale has zero norm.");
 
                 // implement momemtum rescaling
                 const double dE = m_eva.at(to) - m_eva.at(from);
-                if (norm(n_rescale) > 1e-40) {
-                    std::vector<double> vn = component(m_v, n_rescale);
-                    double vn_norm = norm(vn);
-                    double tmp = vn_norm * vn_norm - 2.0 * dE / m_mass; 
-                    if (tmp > 0.0) {
-                        // hop accepted
-                        m_Nhop_accepted += 1;
-                        double vn_norm_new = sqrt(tmp);
-                        m_v += (vn_norm_new - vn_norm) / vn_norm * vn;
-                        m_s = to;
-                    }
-                    else {
-                        // hop frustrated
-                        m_Nhop_frustrated += 1;
-                    }
+                std::vector<double> vn = component(m_v, n_rescale);
+                double vn_norm = norm(vn);
+                double tmp = vn_norm * vn_norm - 2.0 * dE / m_mass; 
+                if (tmp > 0.0) {
+                    // hop accepted
+                    m_Nhop_accepted += 1;
+                    double vn_norm_new = sqrt(tmp);
+                    m_v += (vn_norm_new - vn_norm) / vn_norm * vn;
+                    m_s = to;
+                }
+                else {
+                    // hop frustrated
+                    m_Nhop_frustrated += 1;
                 }
             }
         }
