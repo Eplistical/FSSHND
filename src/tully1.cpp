@@ -74,7 +74,7 @@ bool argparse(int argc, char** argv)
         ("Nstep", po::value<decltype(Nstep)>(&Nstep), "# step")
         ("output_step", po::value<decltype(output_step)>(&output_step), "# step for output")
         ("dt", po::value<decltype(dt)>(&dt), "single time step")
-        ("mass", po::value<decltype(mass)>(&mass)->multitoken(), "mass vector")
+        ("mass", po::value<decltype(mass)>(&mass)->multitoken(), "mass")
         ("init_r", po::value<decltype(init_r)>(&init_r)->multitoken(), "init_r vector")
         ("init_p", po::value<decltype(init_p)>(&init_p)->multitoken(), "init_p vector")
         ("sigma_r", po::value<decltype(sigma_r)>(&sigma_r)->multitoken(), "sigma_r vector")
@@ -155,13 +155,14 @@ void run() {
     for (int istep(0); istep < Nstep; ++istep) {
         // recording
         if (istep % output_step == 0) {
-            logging(misc::fmtstring("# step %d", istep));
+            logging(misc::fmtstring("# step %d / %d", istep, Nstep));
             recorder.stamp(swarm);
             if (all_of(swarm.begin(), swarm.end(), check_end)) {
                 // simulation completes
                 for (int irec(istep / output_step); irec < Nstep / output_step; ++irec) {
                     recorder.stamp(swarm);
                 }
+                logging("# simulation completes.");
                 break;
             }
         }
@@ -186,6 +187,7 @@ void run() {
     vector<vector<double>> varr_data(Nrec);
     vector<vector<double>> KEarr_data(Nrec);
     vector<vector<double>> PEarr_data(Nrec);
+
     for (int irec(0); irec < Nrec; ++irec) {
         auto sarr = recorder.get_s_by_rec(irec);
         auto rarr = recorder.get_r_by_rec(irec);
@@ -253,6 +255,7 @@ void run() {
             const auto& varr = varr_data.at(irec);
             const auto& KEarr = KEarr_data.at(irec);
             const auto& PEarr = PEarr_data.at(irec);
+
             // population
             double n0T = 0.0, n0R = 0.0, n1T = 0.0, n1R = 0.0;
             // momentum 

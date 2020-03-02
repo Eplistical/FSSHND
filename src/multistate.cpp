@@ -26,12 +26,12 @@ using recorder_t = traj_recorder<trajectory_t>;
 int Nsite = 2;
 int ndim;
 int edim;
-double mass;
+double mass = 2000.0;
 int init_s = 0;
-vector<double> init_r;
-vector<double> init_p;
-vector<double> sigma_r;
-vector<double> sigma_p;
+vector<double> init_r(Nsite, 0.0);
+vector<double> init_p(Nsite, 0.0);
+vector<double> sigma_r(Nsite, 0.0);
+vector<double> sigma_p(Nsite, 0.0);
 int Ntraj = 2000;
 int Nstep = 10000;
 int output_step = 100;
@@ -54,13 +54,19 @@ void setup_params() {
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
     misc::confirm<misc::ValueError>(Nstep > 0, "Nstep must > 0.");
     misc::confirm<misc::ValueError>(Nstep > output_step, "Nstep must > output_step.");
-    misc::confirm<misc::ValueError>(not potential_params.empty(), "potential_params cannot be empty.");
     // setup
     ndim = Nsite;
     edim = Nsite;
     hami = make_unique<hamiltonian_t>(edim);
-    hami->set_params(potential_params);
-    mass = hami->get_param("MASS");
+    if (not potential_params.empty()) {
+        // potential_params set, overwrite mass
+        hami->set_params(potential_params);
+        mass = hami->get_param("MASS");
+    }
+    else {
+        // potential_params not set, use mass to overwrite param["MASS"] in hamitonian
+        hami->set_param("MASS", mass);
+    }
     misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
 }
 
@@ -77,7 +83,7 @@ bool argparse(int argc, char** argv)
         ("Nstep", po::value<decltype(Nstep)>(&Nstep), "# step")
         ("output_step", po::value<decltype(output_step)>(&output_step), "# step for output")
         ("dt", po::value<decltype(dt)>(&dt), "single time step")
-        ("mass", po::value<decltype(mass)>(&mass)->multitoken(), "mass vector")
+        ("mass", po::value<decltype(mass)>(&mass)->multitoken(), "mass, will be overwritten if potential_params is set.")
         ("init_r", po::value<decltype(init_r)>(&init_r)->multitoken(), "init_r vector")
         ("init_p", po::value<decltype(init_p)>(&init_p)->multitoken(), "init_p vector")
         ("sigma_r", po::value<decltype(sigma_r)>(&sigma_r)->multitoken(), "sigma_r vector")
@@ -287,6 +293,102 @@ void run() {
 }
 
 
+void runtest() {
+    /**
+     * run test
+     */
+
+    // --- setup --- //
+
+    logging("# setting up simulation...");
+    setup_params();
+    const int my_Ntraj = MPIer::assign_job(Ntraj).size();
+    recorder_t recorder;
+
+
+    if (MPIer::master) {
+        // header output
+        hami->output_params();
+        ioer::info("# simulation paras: ",  
+                    " Nsite = ", Nsite,
+                    " ndim = ", ndim,
+                    " edim = ", edim,
+                    " mass = ", mass,
+                    " Ntraj = ", Ntraj,
+                    " Nstep = ", Nstep,
+                    " output_step = ", output_step,
+                    " dt = ", dt,
+                    " init_r = ", init_r,
+                    " init_p = ", init_p,
+                    " sigma_r = ", sigma_r,
+                    " sigma_p = ", sigma_p,
+                    "");
+    }
+
+    // hamiltonian
+    vector<double> r = init_r;
+    ioer::info("# r = ", r);
+    ioer::info("# H(r) = ", hami->cal_H(r));
+    auto nablaH = hami->cal_nablaH(r);
+    ioer::info("# nablaH(r):");
+    int i = 0;
+    for (auto Hx : nablaH) {
+        ioer::info("# ", i, " : ");
+        ioer::info("# ", Hx);
+        i += 1;
+    }
+
+    vector<complex<double>> init_c(edim, matrixop::ZEROZ);
+    init_c.at(init_s) = matrixop::ONEZ;
+    vector<double> init_v(ndim, 0.0);
+    trajectory_t traj(*hami);
+    double x = -8.0;
+    while (x < 8.0) {
+        double y = -8.0;
+        while (y < 8.0) {
+            vector<double> r{x, y};
+            traj.setup(mass, r, init_v, init_c, init_s);
+            auto H = hami->cal_H(r);
+            auto eva = traj.get_eva();
+            ioer::tabout(r, H.at(0+0*Nsite).real(), H.at(1+1*Nsite).real(), eva.at(0), eva.at(1));
+            y += 0.1;
+        }
+        x += 0.1;
+    }
+
+    return ;
+
+    // --- simulation --- //
+
+    logging("# initializing trajectories ...");
+    vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
+    logging("# simulating ...");
+    for (int istep(0); istep < Nstep; ++istep) {
+        // recording
+        if (istep % output_step == 0) {
+            logging(misc::fmtstring("# step %d", istep));
+            recorder.stamp(swarm);
+            if (all_of(swarm.begin(), swarm.end(), check_end)) {
+                // simulation completes
+                for (int irec(istep / output_step); irec < Nstep / output_step; ++irec) {
+                    recorder.stamp(swarm);
+                }
+                break;
+            }
+        }
+        // propagation
+        for (trajectory_t& traj : swarm) {
+            if (not check_end(traj)) {
+                traj.integrator(dt);
+                if (enable_hop) {
+                    traj.hopper(dt);
+                }
+            }
+        }
+    }
+    MPIer::barrier();
+}
+
 int main(int argc, char** argv) {
     /**
      * entry
@@ -297,7 +399,8 @@ int main(int argc, char** argv) {
     }
     randomer::seed(seed);
     if (MPIer::master) timer::tic();
-    run();
+    //run();
+    runtest();
     if (MPIer::master) ioer::info("# ", timer::toc());
     MPIer::barrier();
     MPIer::finalize();

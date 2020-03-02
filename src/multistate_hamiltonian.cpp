@@ -24,11 +24,11 @@ namespace mqc {
         "# { MASS, OMEGA, OMEGA_T, VC, W, X0 } \n"
         ;
         m_params["MASS"] = 2000.0;
-        m_params["OMEGA"] = 1.0;
-        m_params["OMEGA_T"] = 1.0;
-        m_params["VC"] = 0.02;
+        m_params["OMEGA"] = 0.005;
+        m_params["OMEGA_T"] = 0.01;
+        m_params["VC"] = 0.01;
         m_params["W"] = 0.0;
-        m_params["X0"] = 1.0;
+        m_params["X0"] = 4.0;
     }
 
 
