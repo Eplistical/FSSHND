@@ -39,8 +39,7 @@ namespace mqc {
             // --- quantities --- //
             double cal_KE() const;
             double cal_PE() const;
-
-            // TODO write cal_diab_pop()!
+            std::vector<double> cal_diab_pop() const;
         public:
             // --- getter/setter --- //
             int get_ndim() const noexcept { return m_ndim; }
@@ -81,6 +80,11 @@ namespace mqc {
 
             double get_enable_fric() const noexcept { return m_enable_fric; }
             void set_enable_fric(double enable_fric) { m_enable_fric = enable_fric; }
+
+            std::vector<double> get_eva() const noexcept { return m_eva; }
+            std::vector<std::complex<double>> get_evt() const noexcept { return m_evt; }
+            std::vector<std::vector<std::complex<double>>> get_force() const noexcept { return m_force; }
+            std::vector<std::vector<std::complex<double>>> get_dc() const noexcept { return m_dc; }
         private:
             // --- status --- //
             void update_status();
@@ -162,7 +166,6 @@ namespace mqc {
              * kill the trajectory and save only simple configuration info
              */
             std::vector<double>().swap(m_randomforce);
-            std::vector<std::complex<double>>().swap(m_evt);
             std::vector<std::vector<std::complex<double>>>().swap(m_force);
             std::vector<std::vector<std::complex<double>>>().swap(m_dc);
             m_initialized = false;
@@ -171,7 +174,7 @@ namespace mqc {
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
             // propagate trajectory forward by dt
-            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
+            misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
 
             // electronic part -- RK4
             std::vector<std::complex<double>> rk4_mat(m_edim * m_edim, 0.0);
@@ -229,7 +232,7 @@ namespace mqc {
 
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::hopper(double dt) {
-            misc::confirm<misc::ValueError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
+            misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
             if (m_edim <= 1) {
                 // one surface only, no hop
                 return ;
@@ -301,8 +304,23 @@ namespace mqc {
 
     template <typename HamiltonianType>
         double FSSH_Trajectory<HamiltonianType>::cal_PE() const {
-            misc::confirm<misc::ValueError>(not m_eva.empty(), "cal_PE: eigenvalues not yet calculated.");
+            misc::confirm<misc::StateError>(not m_eva.empty(), "cal_PE: eigenvalues not yet calculated.");
             return m_eva.at(m_s);
+        }
+
+    template <typename HamiltonianType>
+        std::vector<double> FSSH_Trajectory<HamiltonianType>::cal_diab_pop() const {
+            // calculate diab population using Landry Paper Method #3 (DOI: 10.1063/1.4837795)
+            std::vector<double> rst(m_edim);
+            for (int a(0); a < m_edim; ++a) {
+                rst.at(a) = std::pow(std::abs(m_evt.at(a+m_s*m_edim)), 2);
+                for (int j(0); j < m_edim; ++j) {
+                    for (int i(0); i < j; ++i) {
+                        rst.at(a) += 2.0 * (m_evt.at(a+i*m_edim) * m_c.at(i) * std::conj(m_c.at(j)) * std::conj(m_evt.at(a+j*m_edim))).real();
+                    }
+                }
+            }
+            return rst;
         }
 
 

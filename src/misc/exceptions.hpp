@@ -43,6 +43,15 @@ namespace misc {
                     m_msg = (msg == "") ? m_title : (m_title + ":" + msg);
                 }
         };
+
+        class StateError final : public Error {
+            public:
+                explicit StateError(const std::string& msg = "")
+                {
+                    m_title = "StateError";
+                    m_msg = (msg == "") ? m_title : (m_title + ":" + msg);
+                }
+        };
         
         class RuntimeError final : public Error {
             public:

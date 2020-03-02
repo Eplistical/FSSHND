@@ -35,6 +35,7 @@ namespace mqc {
 
         private:
             // --- extractor-util --- //
+            inline trajectory_t get_traj_ele(int irec, int itraj) const;
             inline std::vector<double> get_r_ele(int irec, int itraj) const;
             inline std::vector<double> get_v_ele(int irec, int itraj) const;
             inline std::vector<std::complex<double>> get_c_ele(int irec, int itraj) const;
@@ -44,6 +45,8 @@ namespace mqc {
             inline double get_PE_ele(int irec, int itraj) const;
         public:
             // --- extractor --- //
+            std::vector<trajectory_t> get_traj_by_traj(int itraj = -1) const;
+            std::vector<trajectory_t> get_traj_by_rec(int irec = -1) const;
             std::vector<double> get_r_by_traj(int itraj = -1) const;
             std::vector<double> get_r_by_rec(int irec = -1) const;
             std::vector<double> get_v_by_traj(int itraj = -1) const;
@@ -130,6 +133,11 @@ namespace mqc {
 
 
     template <typename TrajectoryType> 
+        inline typename traj_recorder<TrajectoryType>::trajectory_t traj_recorder<TrajectoryType>::get_traj_ele(int irec, int itraj) const {
+            return m_history.at(itraj+irec*m_Ntraj);
+        }
+
+    template <typename TrajectoryType> 
         inline std::vector<double> traj_recorder<TrajectoryType>::get_r_ele(int irec, int itraj) const {
             return m_history.at(itraj+irec*m_Ntraj).get_r();
         }
@@ -167,6 +175,45 @@ namespace mqc {
 
     // --- extractor --- //
 
+
+    template <typename TrajectoryType> 
+        std::vector<typename traj_recorder<TrajectoryType>::trajectory_t> traj_recorder<TrajectoryType>::get_traj_by_traj(int itraj) const {
+            /*
+             * extract the itraj^th trajectory
+             *  if itraj == -1, extract for all trajectories
+             *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
+             */
+            // check
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            // extract
+            std::vector<typename traj_recorder<TrajectoryType>::trajectory_t> rst;
+            rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
+            if (itraj == -1) {
+                for (int ktraj(0); ktraj < m_Ntraj; ++ktraj) {
+                    auto tmp = get_traj_by_traj(ktraj);
+                    rst.insert(rst.end(), std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
+                }
+            }
+            else {
+                for (int irec(0); irec < m_Nrec; ++irec) {
+                    rst.push_back(get_traj_ele(irec, itraj));
+                }
+            }
+            return rst;
+        }
+
+    template <typename TrajectoryType> 
+        std::vector<typename traj_recorder<TrajectoryType>::trajectory_t> traj_recorder<TrajectoryType>::get_traj_by_rec(int irec) const {
+            /*
+             * extract the irec^th record
+             *  if irec == -1, extract for all records
+             *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
+             */
+            // check
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            // extract
+            return irec == -1 ? m_history : std::vector<typename traj_recorder<TrajectoryType>::trajectory_t> (m_history.begin() + irec * m_Ntraj, m_history.begin() + (irec + 1) * m_Ntraj);
+        }
 
     template <typename TrajectoryType> 
         std::vector<double> traj_recorder<TrajectoryType>::get_r_by_traj(int itraj) const {
