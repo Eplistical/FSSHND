@@ -27,6 +27,8 @@ int Nsite = 2;
 int ndim;
 int edim;
 double mass = 2000.0;
+double kT = 0.1;
+double fric_gamma = 0.0;
 int init_s = 0;
 vector<double> init_r(Nsite, 0.0);
 vector<double> init_p(Nsite, 0.0);
@@ -47,6 +49,8 @@ void setup_params() {
      */
     // check
     misc::confirm<misc::ValueError>(Nsite > 1, "Nsite must > 1.");
+    misc::confirm<misc::ValueError>(kT > 0.0, "kT must > 0.");
+    misc::confirm<misc::ValueError>(fric_gamma >= 0.0, "fric_gamma must >= 0.");
     misc::confirm<misc::ValueError>(init_r.size() == Nsite and init_r.size() == init_p.size()  and init_r.size() == sigma_r.size() and init_p.size() == sigma_p.size(), 
                                     "argparse: init_r, init_p, sigma_r, sigma_p must have the same sizes (which should be Nsite).");
     misc::confirm<misc::ValueError>(init_s >= 0, "init_s must >= 0");
@@ -68,6 +72,7 @@ void setup_params() {
         hami->set_param("MASS", mass);
     }
     misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
+    sigma_p.assign(ndim, sqrt(mass * kT));
 }
 
 bool argparse(int argc, char** argv) 
@@ -83,11 +88,13 @@ bool argparse(int argc, char** argv)
         ("Nstep", po::value<decltype(Nstep)>(&Nstep), "# step")
         ("output_step", po::value<decltype(output_step)>(&output_step), "# step for output")
         ("dt", po::value<decltype(dt)>(&dt), "single time step")
-        ("mass", po::value<decltype(mass)>(&mass)->multitoken(), "mass, will be overwritten if potential_params is set.")
+        ("mass", po::value<decltype(mass)>(&mass), "mass, will be overwritten if potential_params is set.")
+        ("kT", po::value<decltype(kT)>(&kT), "temperature.")
         ("init_r", po::value<decltype(init_r)>(&init_r)->multitoken(), "init_r vector")
         ("init_p", po::value<decltype(init_p)>(&init_p)->multitoken(), "init_p vector")
         ("sigma_r", po::value<decltype(sigma_r)>(&sigma_r)->multitoken(), "sigma_r vector")
-        ("sigma_p", po::value<decltype(sigma_p)>(&sigma_p)->multitoken(), "sigma_p vector")
+        ("sigma_p", po::value<decltype(sigma_p)>(&sigma_p)->multitoken(), "sigma_p vector, not ued")
+        ("fric_gamma", po::value<decltype(fric_gamma)>(&fric_gamma), "friction gamma.")
         ("init_s", po::value<decltype(init_s)>(&init_s), "init_s")
         ("potential_params", po::value<decltype(potential_params)>(&potential_params)->multitoken(), "potential_params vector")
         ("seed", po::value<decltype(seed)>(&seed), "random seed")
@@ -129,6 +136,8 @@ vector<trajectory_t> gen_swarm(int Ntraj) {
             v.at(i) = randomer::normal(init_p.at(i), sigma_p.at(i)) / mass;
         }
         swarm.back().setup(mass, r, v, init_c, init_s);
+        swarm.back().set_gamma(fric_gamma);
+        swarm.back().set_kT(kT);
     }
     return swarm;
 }
@@ -246,6 +255,7 @@ void run() {
                     " ndim = ", ndim,
                     " edim = ", edim,
                     " mass = ", mass,
+                    " kT = ", kT,
                     " Ntraj = ", Ntraj,
                     " Nstep = ", Nstep,
                     " output_step = ", output_step,
@@ -254,6 +264,7 @@ void run() {
                     " init_p = ", init_p,
                     " sigma_r = ", sigma_r,
                     " sigma_p = ", sigma_p,
+                    " fric_gamma = ", fric_gamma,
                     "");
         ioer::tabout("#", "t", 
                 "r", vector<string>(ndim - 1, ""),
@@ -332,6 +343,7 @@ void runtest() {
                     " ndim = ", ndim,
                     " edim = ", edim,
                     " mass = ", mass,
+                    " kT = ", kT,
                     " Ntraj = ", Ntraj,
                     " Nstep = ", Nstep,
                     " output_step = ", output_step,
@@ -340,6 +352,7 @@ void runtest() {
                     " init_p = ", init_p,
                     " sigma_r = ", sigma_r,
                     " sigma_p = ", sigma_p,
+                    " fric_gamma et ", fric_gamma,
                     "");
     }
 

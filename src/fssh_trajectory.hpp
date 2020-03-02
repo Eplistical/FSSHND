@@ -54,9 +54,6 @@ namespace mqc {
             double get_kT() const noexcept { return m_kT; }
             void set_kT(double kT) { m_kT = kT; }
 
-            double get_t() const noexcept { return m_t; }
-            void set_t(double t) { m_t = t; }
-
             std::vector<double> get_r() const noexcept { return m_r; }
             void set_r(const std::vector<double>& r) { m_r = r; }
 
@@ -95,7 +92,6 @@ namespace mqc {
             int m_edim;
             double m_mass;
             double m_kT;
-            double m_t;
             std::vector<double> m_r;
             std::vector<double> m_v;
             std::vector<std::complex<double>> m_c;
@@ -148,7 +144,6 @@ namespace mqc {
             // setup
             m_ndim = r.size();
             set_mass(mass);
-            set_t(0.0);
             set_r(r);
             set_v(v);
             set_c(c);
@@ -195,13 +190,19 @@ namespace mqc {
             k4 = dt * matrixop::matmat(rk4_mat, m_c + k3, m_edim);
             m_c += 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
             
-            // TODO : ADD FRICTION & RANDOM FORCE
             // nuclear part -- velocity verlet
+            std::vector<double> random_force;
             std::vector<double> tot_force;
             // 1st force update
             tot_force = cal_berry_force(); // berry force
             for (int i(0); i < m_ndim; ++i) {
                 tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
+            }
+            if (m_gamma > 0.0) {
+                // friction & random force
+                // TODO : ADD FRICTION & RANDOM FORCE
+                random_force = randomer::vnormal(m_ndim, 0.0, std::sqrt(2.0 * m_gamma * m_kT / dt));
+                tot_force += -m_gamma * m_v + random_force;
             }
             // 1st conf update
             m_v += 0.5 * dt / m_mass * tot_force;
@@ -212,9 +213,12 @@ namespace mqc {
             for (int i(0); i < m_ndim; ++i) {
                 tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
             }
+            if (m_gamma > 0.0) {
+                // friction & random force
+                tot_force += -m_gamma * m_v + random_force;
+            }
             // 2nd conf update
             m_v += 0.5 * dt / m_mass * tot_force;
-            m_t += dt;
             update_status();
         }
 
