@@ -20,6 +20,7 @@ namespace mqc {
             // --- quantities --- //
             double cal_phi(const std::vector<double>& /* r */) const;
             std::vector<double> cal_nabla_phi(const std::vector<double>& /* r */) const;
+        public:
             virtual std::vector<std::complex<double>> cal_H(const std::vector<double>& /* r */) const override;
             virtual std::vector<std::vector<std::complex<double>>> cal_nablaH(const std::vector<double>& /* r */) const override;
     };
