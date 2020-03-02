@@ -234,7 +234,7 @@ namespace mqc {
         void FSSH_Trajectory<HamiltonianType>::hopper(double dt) {
             misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
             if (m_edim <= 1) {
-                // one surface only, no hop
+                // adiabatic dynamics, no hop
                 return ;
             }
             // calculate hop probablities

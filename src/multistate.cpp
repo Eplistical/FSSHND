@@ -35,7 +35,7 @@ vector<double> sigma_p(Nsite, 0.0);
 int Ntraj = 2000;
 int Nstep = 10000;
 int output_step = 100;
-double dt = 0.001;
+double dt = 0.1;
 bool enable_hop = true;
 vector<double> potential_params;
 int seed = 42;
@@ -53,7 +53,7 @@ void setup_params() {
     misc::confirm<misc::ValueError>(dt > 0.0, "dt must > 0.");
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
     misc::confirm<misc::ValueError>(Nstep > 0, "Nstep must > 0.");
-    misc::confirm<misc::ValueError>(Nstep > output_step, "Nstep must > output_step.");
+    misc::confirm<misc::ValueError>(Nstep >= output_step, "Nstep must >= output_step.");
     // setup
     ndim = Nsite;
     edim = Nsite;
@@ -161,10 +161,10 @@ void run() {
     for (int istep(0); istep < Nstep; ++istep) {
         // recording
         if (istep % output_step == 0) {
-            logging(misc::fmtstring("# step %d", istep));
+            logging(misc::fmtstring("# step %d / %d", istep, Nstep));
             recorder.stamp(swarm);
             if (all_of(swarm.begin(), swarm.end(), check_end)) {
-                // simulation completes
+                logging("# simulation completes.");
                 for (int irec(istep / output_step); irec < Nstep / output_step; ++irec) {
                     recorder.stamp(swarm);
                 }
@@ -192,6 +192,7 @@ void run() {
     vector<vector<double>> varr_data(Nrec);
     vector<vector<double>> KEarr_data(Nrec);
     vector<vector<double>> PEarr_data(Nrec);
+    vector<vector<double>> ndarr_data(Nrec);
     for (int irec(0); irec < Nrec; ++irec) {
         auto sarr = recorder.get_s_by_rec(irec);
         auto rarr = recorder.get_r_by_rec(irec);
@@ -199,25 +200,35 @@ void run() {
         auto KEarr = recorder.get_KE_by_rec(irec);
         auto PEarr = recorder.get_PE_by_rec(irec);
 
+        // calc diab pop
+        vector<double> ndarr;
+        auto trajarr = recorder.get_traj_by_rec(irec);
+        for (auto& traj : trajarr) {
+            auto nd = traj.cal_diab_pop();
+            ndarr.insert(ndarr.end(), nd.begin(), nd.end());
+        }
+
         if (MPIer::master) {
             sarr_data.at(irec) = move(sarr);
             rarr_data.at(irec) = move(rarr);
             varr_data.at(irec) = move(varr);
             KEarr_data.at(irec) = move(KEarr);
             PEarr_data.at(irec) = move(PEarr);
+            ndarr_data.at(irec) = move(ndarr);
         }
 
         for (int r(1); r < MPIer::size; ++r) {
             if (MPIer::master) {
-                MPIer::recv(r, sarr, rarr, varr, KEarr, PEarr);
+                MPIer::recv(r, sarr, rarr, varr, KEarr, PEarr, ndarr);
                 sarr_data.at(irec).insert(sarr_data.at(irec).end(), sarr.begin(), sarr.end());
                 rarr_data.at(irec).insert(rarr_data.at(irec).end(), rarr.begin(), rarr.end());
                 varr_data.at(irec).insert(varr_data.at(irec).end(), varr.begin(), varr.end());
                 KEarr_data.at(irec).insert(KEarr_data.at(irec).end(), KEarr.begin(), KEarr.end());
                 PEarr_data.at(irec).insert(PEarr_data.at(irec).end(), PEarr.begin(), PEarr.end());
+                ndarr_data.at(irec).insert(ndarr_data.at(irec).end(), ndarr.begin(), ndarr.end());
             }
             else if (MPIer::rank == r) {
-                MPIer::send(0, sarr, rarr, varr, KEarr, PEarr);
+                MPIer::send(0, sarr, rarr, varr, KEarr, PEarr, ndarr);
             }
             MPIer::barrier();
         }
@@ -248,6 +259,7 @@ void run() {
                 "r", vector<string>(ndim - 1, ""),
                 "p", vector<string>(ndim - 1, ""),
                 "s", 
+                "diab_pop", vector<string>(edim - 1, ""),
                 "Etot"
                 );
         // dynamics output
@@ -258,8 +270,10 @@ void run() {
             const auto& varr = varr_data.at(irec);
             const auto& KEarr = KEarr_data.at(irec);
             const auto& PEarr = PEarr_data.at(irec);
+            const auto& ndarr = ndarr_data.at(irec);
             // statistics
             vector<double> r, p;
+            vector<double> nd(edim, 0.0);
             double s = 0.0;
             double KE = 0.0, PE = 0.0;
             for (int itraj(0); itraj < Ntraj; ++itraj) {
@@ -274,6 +288,8 @@ void run() {
                 }
                 KE += KEarr.at(itraj);
                 PE += PEarr.at(itraj);
+
+                nd += vector<double> (ndarr.begin() + itraj * edim, ndarr.begin() + (itraj+1) * edim);
             }
 
             r /= Ntraj;
@@ -282,10 +298,12 @@ void run() {
             KE /= Ntraj;
             PE /= Ntraj;
 
-            ioer::tabout("#", t, r, p, s, KE + PE);
+            nd /= Ntraj;
+
+            ioer::tabout("#", t, r, p, s, nd, KE + PE);
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(r, p, s, KE + PE);
+                ioer::tabout(r, p, s, nd, KE + PE);
             }
         }
     }
@@ -356,37 +374,14 @@ void runtest() {
         x += 0.1;
     }
 
-    return ;
 
-    // --- simulation --- //
-
-    logging("# initializing trajectories ...");
-    vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
-    logging("# simulating ...");
-    for (int istep(0); istep < Nstep; ++istep) {
-        // recording
-        if (istep % output_step == 0) {
-            logging(misc::fmtstring("# step %d", istep));
-            recorder.stamp(swarm);
-            if (all_of(swarm.begin(), swarm.end(), check_end)) {
-                // simulation completes
-                for (int irec(istep / output_step); irec < Nstep / output_step; ++irec) {
-                    recorder.stamp(swarm);
-                }
-                break;
-            }
-        }
-        // propagation
-        for (trajectory_t& traj : swarm) {
-            if (not check_end(traj)) {
-                traj.integrator(dt);
-                if (enable_hop) {
-                    traj.hopper(dt);
-                }
-            }
-        }
+    ioer::info("# initial dist:");
+    auto swarm = gen_swarm(Ntraj);
+    for (auto& traj : swarm) {
+        ioer::info("## ", traj.get_r(), traj.get_v());
     }
-    MPIer::barrier();
+
+    return ;
 }
 
 int main(int argc, char** argv) {
@@ -399,8 +394,8 @@ int main(int argc, char** argv) {
     }
     randomer::seed(seed);
     if (MPIer::master) timer::tic();
-    //run();
-    runtest();
+    run();
+    //runtest();
     if (MPIer::master) ioer::info("# ", timer::toc());
     MPIer::barrier();
     MPIer::finalize();

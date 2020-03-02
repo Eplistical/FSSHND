@@ -54,7 +54,7 @@ void setup_params() {
     misc::confirm<misc::ValueError>(dt > 0.0, "dt must > 0.");
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
     misc::confirm<misc::ValueError>(Nstep > 0, "Nstep must > 0.");
-    misc::confirm<misc::ValueError>(Nstep > output_step, "Nstep must > output_step.");
+    misc::confirm<misc::ValueError>(Nstep >= output_step, "Nstep must >= output_step.");
     // setup
     hami = make_unique<hamiltonian_t>();
     if (not potential_params.empty()) {
@@ -74,7 +74,7 @@ bool argparse(int argc, char** argv)
         ("Nstep", po::value<decltype(Nstep)>(&Nstep), "# step")
         ("output_step", po::value<decltype(output_step)>(&output_step), "# step for output")
         ("dt", po::value<decltype(dt)>(&dt), "single time step")
-        ("mass", po::value<decltype(mass)>(&mass)->multitoken(), "mass")
+        ("mass", po::value<decltype(mass)>(&mass), "mass")
         ("init_r", po::value<decltype(init_r)>(&init_r)->multitoken(), "init_r vector")
         ("init_p", po::value<decltype(init_p)>(&init_p)->multitoken(), "init_p vector")
         ("sigma_r", po::value<decltype(sigma_r)>(&sigma_r)->multitoken(), "sigma_r vector")
