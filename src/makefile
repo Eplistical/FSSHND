@@ -2,7 +2,8 @@ ROOTDIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 CXX = g++ 
 MPICXX = mpicxx
-OPT = -O3
+OPT += -std=c++11
+OPT += -O3 
 
 LIBS += -L$(ROOTDIR)/misc -Wl,--rpath=$(ROOTDIR)/misc -lmisc
 LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran 

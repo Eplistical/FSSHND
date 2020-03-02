@@ -43,6 +43,15 @@ namespace misc {
                     m_msg = (msg == "") ? m_title : (m_title + ":" + msg);
                 }
         };
+        
+        class RuntimeError final : public Error {
+            public:
+                explicit RuntimeError(const std::string& msg = "")
+                {
+                    m_title = "RuntimeError";
+                    m_msg = (msg == "") ? m_title : (m_title + ":" + msg);
+                }
+        };
 
 };
 #endif
