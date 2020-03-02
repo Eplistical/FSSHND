@@ -35,7 +35,7 @@ vector<double> sigma_p;
 int Ntraj = 2000;
 int Nstep = 10000;
 int output_step = 100;
-double dt = 0.1;
+double dt = 0.001;
 bool enable_hop = true;
 vector<double> potential_params;
 int seed = 42;

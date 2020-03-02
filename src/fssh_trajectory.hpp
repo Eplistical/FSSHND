@@ -39,6 +39,8 @@ namespace mqc {
             // --- quantities --- //
             double cal_KE() const;
             double cal_PE() const;
+
+            // TODO write cal_diab_pop()!
         public:
             // --- getter/setter --- //
             int get_ndim() const noexcept { return m_ndim; }
