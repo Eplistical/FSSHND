@@ -407,9 +407,15 @@ int main(int argc, char** argv) {
         return -1;
     }
     randomer::seed(seed);
-    if (MPIer::master) timer::tic();
-    run();
-    //runtest();
+    timer::tic();
+    try { 
+        run();
+    } catch(const std::exception& e) { 
+        // exception caught
+        ioer::info("# Thread ", MPIer::rank, " / ", MPIer::rank, ": Exception caught: ", e.what());
+        ioer::info("# ", timer::toc());
+        MPIer::abort();
+    }
     if (MPIer::master) ioer::info("# ", timer::toc());
     MPIer::barrier();
     MPIer::finalize();
