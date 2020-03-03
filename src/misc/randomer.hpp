@@ -8,6 +8,7 @@
  */
 #include <cmath>
 #include <random>
+#include <functional>
 #include <vector>
 #include <unordered_set>
 #include <algorithm>
@@ -188,7 +189,7 @@ namespace randomer {
 
 	template <typename FloatType>
         typename std::enable_if<std::is_floating_point<FloatType>::value, std::vector<FloatType>>::type
-        MHsample(FloatType (*target_func)(FloatType), 
+        MHsample(FloatType (*prob_func)(FloatType), 
             SIZE_T N, 
             SIZE_T Nstep_eql = 10000, 
             SIZE_T Nstep_collect = 100, 
@@ -197,12 +198,12 @@ namespace randomer {
             ) {
         // Sample 1D function with the Metropolis–Hastings algorithm
         FloatType xnow = x0;
-        FloatType fxnow = target_func(xnow);
+        FloatType fxnow = prob_func(xnow);
         FloatType xnext, fxnext;
         // equilibrate
         for (SIZE_T istep(0); istep < Nstep_eql; ++istep) {
             xnext = xnow + randomer::normal(0.0, sigma);
-            fxnext = target_func(xnext);
+            fxnext = prob_func(xnext);
             if (randomer::rand() < fxnext / fxnow) {
                 xnow = xnext;
                 fxnow = fxnext;
@@ -214,7 +215,7 @@ namespace randomer {
         SIZE_T Nstep_sample = Nstep_collect * N;
         for (SIZE_T istep(0); istep < Nstep_sample; ++istep) {
             xnext = xnow + randomer::normal(0.0, sigma);
-            fxnext = target_func(xnext);
+            fxnext = prob_func(xnext);
             if (randomer::rand() < fxnext / fxnow) {
                 xnow = xnext;
                 fxnow = fxnext;
@@ -226,6 +227,50 @@ namespace randomer {
         return rst;
     }
 
+
+	template <typename FloatType, typename StateType>
+        typename std::enable_if<std::is_floating_point<FloatType>::value, std::vector<StateType>>::type
+        vMHsample(const std::function<FloatType(const StateType&)>& prob_func,
+            SIZE_T N, 
+            SIZE_T Nstep_eql, 
+            SIZE_T Nstep_collect, 
+            const StateType& x0, 
+            const StateType& sigma) {
+        // Sample general function with the Metropolis–Hastings algorithm
+        StateType xnow = x0;
+        StateType xnext(x0.size());
+        FloatType fxnow = prob_func(xnow);
+        FloatType fxnext;
+        // equilibrate
+        for (SIZE_T istep(0); istep < Nstep_eql; ++istep) {
+            for (int i(0); i < xnow.size(); ++i) {
+                xnext.at(i) = xnow.at(i) + randomer::normal(0.0, sigma.at(i));
+            }
+            fxnext = prob_func(xnext);
+            if (fxnext >= fxnow or randomer::rand() < fxnext / fxnow) {
+                xnow = xnext;
+                fxnow = fxnext;
+            }
+        }
+        // sampling
+        std::vector<StateType> rst;
+        rst.reserve(N);
+        SIZE_T Nstep_sample = Nstep_collect * N;
+        for (SIZE_T istep(0); istep < Nstep_sample; ++istep) {
+            for (int i(0); i < xnow.size(); ++i) {
+                xnext.at(i) = xnow.at(i) + randomer::normal(0.0, sigma.at(i));
+            }
+            fxnext = prob_func(xnext);
+            if (fxnext >= fxnow or randomer::rand() < fxnext / fxnow) {
+                xnow = xnext;
+                fxnow = fxnext;
+            }
+            if (istep % Nstep_collect == 0) {
+                rst.push_back(xnow);
+            }
+        }
+        return rst;
+    }
 }
 
 #endif // _RANDOMER_HPP
