@@ -27,6 +27,8 @@ namespace mqc {
             ~FSSH_Trajectory() = default;
         private:
             // --- simualtion utils --- //
+            void electronic_integrator(double /* dt */);
+            void nuclear_integrator(double /* dt */);
             double cal_hop_prob(int /* from */, int /* to */, double /* dt */) const;
         public:
             // --- simulation --- //
@@ -54,6 +56,9 @@ namespace mqc {
             double get_kT() const noexcept { return m_kT; }
             void set_kT(double kT) { m_kT = kT; }
 
+            double get_t() const noexcept { return m_t; }
+            void set_t(double t) { m_t = t; }
+
             std::vector<double> get_r() const noexcept { return m_r; }
             void set_r(const std::vector<double>& r) { m_r = r; }
 
@@ -75,8 +80,8 @@ namespace mqc {
             double get_gamma() const noexcept { return m_gamma; }
             void set_gamma(double param_gamma) { m_gamma = param_gamma; }
 
-            double get_enable_fric() const noexcept { return m_enable_fric; }
-            void set_enable_fric(double enable_fric) { m_enable_fric = enable_fric; }
+            bool get_enable_hop() const noexcept { return m_enable_hop; }
+            void set_enable_hop(bool enable_hop) { m_enable_hop = enable_hop; }
 
             std::vector<double> get_eva() const noexcept { return m_eva; }
             std::vector<std::complex<double>> get_evt() const noexcept { return m_evt; }
@@ -92,6 +97,7 @@ namespace mqc {
             int m_edim;
             double m_mass;
             double m_kT;
+            double m_t;
             std::vector<double> m_r;
             std::vector<double> m_v;
             std::vector<std::complex<double>> m_c;
@@ -109,8 +115,8 @@ namespace mqc {
             int m_Nhop_accepted;
             int m_Nhop_frustrated;
             // --- options/flags --- //
-            bool m_enable_fric;
             bool m_initialized;
+            bool m_enable_hop;
     };
 
 
@@ -122,7 +128,7 @@ namespace mqc {
 
     template <typename HamiltonianType>
         FSSH_Trajectory<HamiltonianType>::FSSH_Trajectory(const HamiltonianType& hamiltonian) 
-        : m_hamiltonian(hamiltonian), m_enable_fric(false), m_initialized(false)
+        : m_hamiltonian(hamiltonian), m_initialized(false), enable_hop(true)
         {  
             m_edim = hamiltonian.get_dim();
         }
@@ -148,6 +154,7 @@ namespace mqc {
             set_v(v);
             set_c(c);
             set_s(s);
+            set_t(0.0);
             set_Nhop_accepted(0);
             set_Nhop_frustrated(0);
             // update status
@@ -165,12 +172,73 @@ namespace mqc {
             std::vector<std::vector<std::complex<double>>>().swap(m_dc);
             m_initialized = false;
         }
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::electronic_integrator(double dt) {
+            // electronic integrator  -- RK4
+            std::vector<std::complex<double>> rk4_mat(m_edim * m_edim, 0.0);
+            for (int j(0); j < m_edim; ++j) {
+                for (int k(0); k < m_edim; ++k) {
+                    for (int i(0); i < m_ndim; ++i) {
+                        rk4_mat.at(j+k*m_edim) -= m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
+                    }
+                }
+            }
+            for (int j(0); j < m_edim; ++j) {
+                rk4_mat.at(j+j*m_edim) -= matrixop::IMAGIZ * m_eva.at(j);
+            }
+            std::vector<std::complex<double>> k1, k2, k3, k4;
+            k1 = dt * matrixop::matmat(rk4_mat, m_c, m_edim);
+            k2 = dt * matrixop::matmat(rk4_mat, m_c + 0.5 * k1, m_edim);
+            k3 = dt * matrixop::matmat(rk4_mat, m_c + 0.5 * k2, m_edim);
+            k4 = dt * matrixop::matmat(rk4_mat, m_c + k3, m_edim);
+            m_c += 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
+        }
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::nuclear_integrator(double dt) {
+            // nuclear integrator -- velocity verlet
+            std::vector<double> random_force;
+            std::vector<double> tot_force;
+            // 1st force update
+            tot_force = cal_berry_force(); // berry force
+            for (int i(0); i < m_ndim; ++i) {
+                tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
+            }
+            if (m_gamma > 0.0) {
+                // friction & random force
+                random_force = randomer::vnormal(m_ndim, 0.0, std::sqrt(2.0 * m_gamma * m_kT / dt));
+                tot_force += -m_gamma * m_v + random_force;
+            }
+            // 1st conf update
+            m_v += 0.5 * dt / m_mass * tot_force;
+            m_r += dt * m_v;
+            update_status();
+            // 2nd force update 
+            tot_force = cal_berry_force(); // berry force
+            for (int i(0); i < m_ndim; ++i) {
+                tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
+            }
+            if (m_gamma > 0.0) {
+                // friction & random force
+                tot_force += -m_gamma * m_v + random_force;
+            }
+            // 2nd conf update
+            m_v += 0.5 * dt / m_mass * tot_force;
+            update_status();
+        }
             
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
             // propagate trajectory forward by dt
             misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
-
+            nuclear_integrator(dt);
+            electronic_integrator(dt);
+            if (m_enable_hop) {
+                hopper(dt);
+            } 
+            m_t += dt;
+            /*
             // electronic part -- RK4
             std::vector<std::complex<double>> rk4_mat(m_edim * m_edim, 0.0);
             for (int j(0); j < m_edim; ++j) {
@@ -220,6 +288,9 @@ namespace mqc {
             // 2nd conf update
             m_v += 0.5 * dt / m_mass * tot_force;
             update_status();
+            // update t
+            m_t += dt;
+            */
         }
 
     template <typename HamiltonianType>
@@ -231,7 +302,8 @@ namespace mqc {
             for (int i(0); i < m_ndim; ++i) {
                 v_dot_dc += m_v.at(i) * m_dc.at(i).at(to+from*m_edim);
             }
-            return -2.0 * dt * (m_c.at(from) * conj(m_c.at(to)) * v_dot_dc).real() / (m_c.at(from) * conj(m_c.at(from))).real();
+            double rst = -2.0 * dt * (m_c.at(from) * conj(m_c.at(to)) * v_dot_dc).real() / (m_c.at(from) * conj(m_c.at(from))).real();
+            return rst > 0.0 ? rst : 0.0;
         }
 
     template <typename HamiltonianType>
