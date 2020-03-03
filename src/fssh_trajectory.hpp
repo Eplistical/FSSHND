@@ -232,8 +232,8 @@ namespace mqc {
         void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
             // propagate trajectory forward by dt
             misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
-            nuclear_integrator(dt);
             electronic_integrator(dt);
+            nuclear_integrator(dt);
             if (m_enable_hop) {
                 hopper(dt);
             } 
