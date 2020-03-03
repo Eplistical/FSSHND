@@ -137,6 +137,7 @@ vector<trajectory_t> gen_swarm(int Ntraj) {
         swarm.back().setup(mass, r, v, init_c, init_s);
         swarm.back().set_gamma(fric_gamma);
         swarm.back().set_kT(kT);
+        swarm.back().set_enable_hop(enable_hop);
     }
     return swarm;
 }
@@ -183,9 +184,6 @@ void run() {
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
                 traj.integrator(dt);
-                if (enable_hop) {
-                    traj.hopper(dt);
-                }
             }
         }
     }

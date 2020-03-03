@@ -122,6 +122,7 @@ vector<trajectory_t> gen_swarm(int Ntraj) {
             v.at(i) = randomer::normal(init_p.at(i), sigma_p.at(i)) / mass;
         }
         swarm.back().setup(mass, r, v, init_c, init_s);
+        swarm.back().set_enable_hop(enable_hop);
     }
     return swarm;
 }
@@ -170,9 +171,6 @@ void run() {
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
                 traj.integrator(dt);
-                if (enable_hop) {
-                    traj.hopper(dt);
-                }
             }
         }
     }
