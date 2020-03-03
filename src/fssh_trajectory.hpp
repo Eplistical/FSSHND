@@ -128,7 +128,7 @@ namespace mqc {
 
     template <typename HamiltonianType>
         FSSH_Trajectory<HamiltonianType>::FSSH_Trajectory(const HamiltonianType& hamiltonian) 
-        : m_hamiltonian(hamiltonian), m_initialized(false), enable_hop(true)
+        : m_hamiltonian(hamiltonian), m_initialized(false), m_enable_hop(true)
         {  
             m_edim = hamiltonian.get_dim();
         }
