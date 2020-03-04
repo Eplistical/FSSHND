@@ -27,19 +27,21 @@ namespace mqc {
             ~FSSH_Trajectory() = default;
         private:
             // --- simualtion utils --- //
-            void electronic_integrator(double /* dt */);
-            void nuclear_integrator(double /* dt */);
             void cal_Tmat();
+            void update_status();
+            std::vector<double> cal_berry_force();
+            void nuclear_integrator(double /* dt */);
+            void electronic_integrator(double /* dt */);
             double cal_hop_prob(int /* from */, int /* to */, double /* dt */) const;
+            void hopper(double /* dt */);
         public:
-            // --- simulation --- //
+            // --- simulation interfaces --- //
             void setup( double /* mass */, const std::vector<double>& /* r */, const std::vector<double>& /* v */,
                 const std::vector<std::complex<double>>& /* c */, int /* s */);
             void die();
             void integrator(double /* dt */);
-            void hopper(double /* dt */);
         public:
-            // --- quantities --- //
+            // --- other interfaces --- //
             double cal_KE() const;
             double cal_PE() const;
             std::vector<double> cal_diab_pop() const;
@@ -89,10 +91,6 @@ namespace mqc {
             std::vector<std::vector<std::complex<double>>> get_force() const noexcept { return m_force; }
             std::vector<std::vector<std::complex<double>>> get_dc() const noexcept { return m_dc; }
         private:
-            // --- status --- //
-            void update_status();
-            std::vector<double> cal_berry_force();
-        private:
             // --- basic --- //
             int m_ndim;
             int m_edim;
@@ -140,36 +138,10 @@ namespace mqc {
 
 
     template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::setup( double mass, const std::vector<double>& r, const std::vector<double>& v,
-                const std::vector<std::complex<double>>& c, int s) { 
-            /*
-             * setup trajectory for simulation
-             */
-            // check
-            misc::confirm<misc::ValueError>(r.size() == v.size(), "init_state: invalid r/v sizes.");
-            misc::confirm<misc::ValueError>(c.size() == m_edim, "init_state: invalid c size.");
-            misc::confirm<misc::ValueError>(s < m_edim, "init_state: invalid s number.");
-            // setup
-            m_ndim = r.size();
-            set_mass(mass);
-            set_r(r);
-            set_v(v);
-            set_c(c);
-            set_s(s);
-            set_t(0.0);
-            set_Nhop_accepted(0);
-            set_Nhop_frustrated(0);
-            // update status
-            update_status();
-            m_initialized = true;
-        }
-
-    template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::cal_Tmat() {
             /**
              * calculate T_jk = v \dot dc_jk
              */
-            // calculation
             m_Tmat.assign(m_edim * m_edim, matrixop::ZEROZ);
             for (int j(0); j < m_edim; ++j) {
                 for (int k(0); k < j; ++k) {
@@ -180,10 +152,20 @@ namespace mqc {
                 }
             }
         }
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::update_status() {
+            /**
+             * update status of the trajectory current configuration
+             */
+            m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
+            cal_Tmat();
+        }
+
     
     template <typename HamiltonianType>
         std::vector<double> FSSH_Trajectory<HamiltonianType>::cal_berry_force() {
-            /* 
+            /** 
              * calculate current berry force
              */
             std::vector<double> F_berry(m_ndim, 0.0);
@@ -198,21 +180,11 @@ namespace mqc {
             return F_berry;
         }
 
-
-    template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::die() {
-            /*
-             * kill the trajectory, cannot change evolve any more
-             */
-            std::vector<double>().swap(m_randomforce);
-            std::vector<std::vector<std::complex<double>>>().swap(m_force);
-            std::vector<std::vector<std::complex<double>>>().swap(m_dc);
-            m_initialized = false;
-        }
-
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::electronic_integrator(double dt) {
-            // electronic integrator  -- RK4
+            /**
+             * electronic integrator  -- RK4
+             */
             std::vector<std::complex<double>> rk4_mat = -m_Tmat;
             for (int j(0); j < m_edim; ++j) {
                 rk4_mat.at(j+j*m_edim) -= matrixop::IMAGIZ * m_eva.at(j);
@@ -227,7 +199,9 @@ namespace mqc {
 
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::nuclear_integrator(double dt) {
-            // nuclear integrator -- velocity verlet
+            /**
+             * nuclear integrator -- velocity verlet
+             */
             std::vector<double> random_force;
             std::vector<double> tot_force;
             // 1st force update
@@ -259,34 +233,9 @@ namespace mqc {
         }
             
     template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
-            // propagate trajectory forward by dt
-            misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
-            // nuclear part
-            nuclear_integrator(dt);
-            // electronic part, use dtq = min(dt, 0.02 / max(T))
-            double max_abs_T = 0.0;
-            for (auto& Tx : m_Tmat) {
-                max_abs_T = std::max(std::abs(Tx), max_abs_T);
-            } 
-            double dtq = std::min(dt, 0.02 / max_abs_T);
-            int Ndtq = std::round(dt / dtq);
-            dtq = dt / Ndtq;
-            for (int idtq(0); idtq < Ndtq; ++idtq) {
-                electronic_integrator(dtq);
-                if (m_enable_hop) {
-                    hopper(dtq);
-                } 
-            }
-            // time part
-            m_t += dt;
-        }
-
-
-    template <typename HamiltonianType>
         double FSSH_Trajectory<HamiltonianType>::cal_hop_prob(int j, int k, double dt) const {
-            /*
-             * hopping probability for j->k
+            /**
+             * calculate hopping probability for j->k
              */
             const std::complex<double> rho_jk = m_c.at(j) * conj(m_c.at(k));
             const std::complex<double> rho_jj = m_c.at(j) * conj(m_c.at(j));
@@ -296,6 +245,9 @@ namespace mqc {
 
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::hopper(double dt) {
+            /**
+             * hopping function 
+             */
             misc::confirm<misc::StateError>(m_initialized, "hopper: FSSH_Trajectory died / not initialzied.");
             if (m_edim <= 1) {
                 // adiabatic dynamics, no hop
@@ -332,7 +284,6 @@ namespace mqc {
                     n_rescale.at(i) = (m_dc.at(i).at(from+to*m_edim) * m_Tmat.at(to+from*m_edim)).real();
                 }
                 misc::confirm<misc::RuntimeError>(norm(n_rescale) > 1e-40, "hopper: n_rescale has zero norm.");
-
                 // implement momemtum rescaling
                 const double dE = m_eva.at(to) - m_eva.at(from);
                 std::vector<double> vn = component(m_v, n_rescale);
@@ -352,7 +303,75 @@ namespace mqc {
             }
         }
 
-    // --- quantities --- //
+
+    // --- simulation interfaces --- //
+
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::setup( double mass, const std::vector<double>& r, const std::vector<double>& v,
+                const std::vector<std::complex<double>>& c, int s) { 
+            /**
+             * setup trajectory for simulation
+             */
+            // check
+            misc::confirm<misc::ValueError>(r.size() == v.size(), "init_state: invalid r/v sizes.");
+            misc::confirm<misc::ValueError>(c.size() == m_edim, "init_state: invalid c size.");
+            misc::confirm<misc::ValueError>(s < m_edim, "init_state: invalid s number.");
+            // setup
+            m_ndim = r.size();
+            set_mass(mass);
+            set_r(r);
+            set_v(v);
+            set_c(c);
+            set_s(s);
+            set_t(0.0);
+            set_Nhop_accepted(0);
+            set_Nhop_frustrated(0);
+            // update status
+            update_status();
+            m_initialized = true;
+        }
+
+
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::die() {
+            /**
+             * kill the trajectory, cannot evolve any more
+             */
+            std::vector<double>().swap(m_randomforce);
+            std::vector<std::vector<std::complex<double>>>().swap(m_force);
+            std::vector<std::vector<std::complex<double>>>().swap(m_dc);
+            m_initialized = false;
+        }
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
+            /**
+             * INTERFACE METHOD
+             * propagate trajectory forward by dt
+             */
+            misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
+            // nuclear part
+            nuclear_integrator(dt);
+            // electronic part, use dtq = min(dt, 0.02 / max(T))
+            double max_abs_T = 0.0;
+            for (auto& Tx : m_Tmat) {
+                max_abs_T = std::max(std::abs(Tx), max_abs_T);
+            } 
+            double dtq = std::min(dt, 0.02 / max_abs_T);
+            int Ndtq = std::round(dt / dtq);
+            dtq = dt / Ndtq;
+            for (int idtq(0); idtq < Ndtq; ++idtq) {
+                electronic_integrator(dtq);
+                if (m_enable_hop) {
+                    hopper(dtq);
+                } 
+            }
+            // time part
+            m_t += dt;
+        }
+
+
+    // --- other interfaces --- //
 
 
     template <typename HamiltonianType>
@@ -368,7 +387,9 @@ namespace mqc {
 
     template <typename HamiltonianType>
         std::vector<double> FSSH_Trajectory<HamiltonianType>::cal_diab_pop() const {
-            // calculate diab population using Landry Paper Method #3 (DOI: 10.1063/1.4837795)
+            /**
+             * calculate diab population using Landry Paper Method #3 (DOI: 10.1063/1.4837795)
+             */
             std::vector<double> rst(m_edim);
             for (int a(0); a < m_edim; ++a) {
                 rst.at(a) = std::pow(std::abs(m_evt.at(a+m_s*m_edim)), 2);
@@ -381,17 +402,6 @@ namespace mqc {
             return rst;
         }
 
-    // --- status --- //
-
-
-    template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::update_status() {
-            /*
-             * update m_force, m_dc, m_eva, m_evt according to current m_r
-             */
-            m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
-            cal_Tmat();
-        }
 
 } // namespace mqc
 
