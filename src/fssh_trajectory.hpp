@@ -47,49 +47,49 @@ namespace mqc {
             std::vector<double> cal_diab_pop() const;
         public:
             // --- getter/setter --- //
-            int get_ndim() const noexcept { return m_ndim; }
-            void set_ndim(int ndim) { m_ndim = ndim; }
+            inline int get_ndim() const noexcept { return m_ndim; }
+            inline void set_ndim(int ndim) { m_ndim = ndim; }
 
-            int get_edim() const noexcept { return m_ndim; }
-            void set_edim(int ndim) { m_ndim = ndim; }
+            inline int get_edim() const noexcept { return m_ndim; }
+            inline void set_edim(int ndim) { m_ndim = ndim; }
 
-            double get_mass() const noexcept { return m_mass; }
-            void set_mass(double mass) { m_mass = mass; }
+            inline double get_mass() const noexcept { return m_mass; }
+            inline void set_mass(double mass) { m_mass = mass; }
 
-            double get_kT() const noexcept { return m_kT; }
-            void set_kT(double kT) { m_kT = kT; }
+            inline double get_kT() const noexcept { return m_kT; }
+            inline void set_kT(double kT) { m_kT = kT; }
 
-            double get_t() const noexcept { return m_t; }
-            void set_t(double t) { m_t = t; }
+            inline double get_t() const noexcept { return m_t; }
+            inline void set_t(double t) { m_t = t; }
 
-            std::vector<double> get_r() const noexcept { return m_r; }
-            void set_r(const std::vector<double>& r) { m_r = r; }
+            inline std::vector<double> get_r() const noexcept { return m_r; }
+            inline void set_r(const std::vector<double>& r) { m_r = r; }
 
-            std::vector<double> get_v() const noexcept { return m_v; }
-            void set_v(const std::vector<double>& v) { m_v = v; }
+            inline std::vector<double> get_v() const noexcept { return m_v; }
+            inline void set_v(const std::vector<double>& v) { m_v = v; }
 
-            std::vector<std::complex<double>> get_c() const noexcept { return m_c; }
-            void set_c(const std::vector<std::complex<double>>& c) { m_c = c; }
+            inline std::vector<std::complex<double>> get_c() const noexcept { return m_c; }
+            inline void set_c(const std::vector<std::complex<double>>& c) { m_c = c; }
 
-            int get_s() const noexcept { return m_s; }
-            void set_s(int s) { m_s = s; }
+            inline int get_s() const noexcept { return m_s; }
+            inline void set_s(int s) { m_s = s; }
 
-            int get_Nhop_accepted() const noexcept { return m_Nhop_accepted; }
-            void set_Nhop_accepted(int Nhop_accepted) { m_Nhop_accepted = Nhop_accepted; }
+            inline int get_Nhop_accepted() const noexcept { return m_Nhop_accepted; }
+            inline void set_Nhop_accepted(int Nhop_accepted) { m_Nhop_accepted = Nhop_accepted; }
 
-            int get_Nhop_frustrated() const noexcept { return m_Nhop_frustrated; }
-            void set_Nhop_frustrated(int Nhop_frustrated) { m_Nhop_frustrated = Nhop_frustrated; }
+            inline int get_Nhop_frustrated() const noexcept { return m_Nhop_frustrated; }
+            inline void set_Nhop_frustrated(int Nhop_frustrated) { m_Nhop_frustrated = Nhop_frustrated; }
 
-            double get_gamma() const noexcept { return m_gamma; }
-            void set_gamma(double param_gamma) { m_gamma = param_gamma; }
+            inline double get_gamma() const noexcept { return m_gamma; }
+            inline void set_gamma(double param_gamma) { m_gamma = param_gamma; }
 
-            bool get_enable_hop() const noexcept { return m_enable_hop; }
-            void set_enable_hop(bool enable_hop) { m_enable_hop = enable_hop; }
+            inline bool get_enable_hop() const noexcept { return m_enable_hop; }
+            inline void set_enable_hop(bool enable_hop) { m_enable_hop = enable_hop; }
 
-            std::vector<double> get_eva() const noexcept { return m_eva; }
-            std::vector<std::complex<double>> get_evt() const noexcept { return m_evt; }
-            std::vector<std::vector<std::complex<double>>> get_force() const noexcept { return m_force; }
-            std::vector<std::vector<std::complex<double>>> get_dc() const noexcept { return m_dc; }
+            inline std::vector<double> get_eva() const noexcept { return m_eva; }
+            inline std::vector<std::complex<double>> get_evt() const noexcept { return m_evt; }
+            inline std::vector<std::vector<std::complex<double>>> get_force() const noexcept { return m_force; }
+            inline std::vector<std::vector<std::complex<double>>> get_dc() const noexcept { return m_dc; }
         private:
             // --- basic --- //
             int m_ndim;

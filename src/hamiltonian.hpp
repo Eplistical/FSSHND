@@ -32,16 +32,16 @@ namespace mqc {
                 std::vector<std::complex<double>>& /* lastevt */
                 ) const;
         public:
-            int get_dim() const noexcept { return m_dim; }
+            inline int get_dim() const noexcept { return m_dim; }
 
-            std::string get_doc() const noexcept { return m_doc; }
-            void set_doc(const std::string& doc) { m_doc = doc; }
+            inline std::string get_doc() const noexcept { return m_doc; }
+            inline void set_doc(const std::string& doc) { m_doc = doc; }
 
-            std::map<std::string, double> get_params() const noexcept { return m_params; }
-            void set_params(const std::map<std::string, double>& params) { m_params = params; }
+            inline std::map<std::string, double> get_params() const noexcept { return m_params; }
+            inline void set_params(const std::map<std::string, double>& params) { m_params = params; }
 
-            double get_param(const std::string& key) const { return m_params.at(key); }
-            void set_param(const std::string& key, double val) { m_params[key] = val; }
+            inline double get_param(const std::string& key) const { return m_params.at(key); }
+            inline void set_param(const std::string& key, double val) { m_params[key] = val; }
 
         protected:
             int m_dim;
