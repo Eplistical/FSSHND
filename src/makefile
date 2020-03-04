@@ -3,18 +3,22 @@ ROOTDIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 CXX = g++ 
 MPICXX = mpicxx
 OPT += -std=c++14
+#OPT += -O0
 OPT += -O3 
 
 LIBS += -L$(ROOTDIR)/misc -Wl,--rpath=$(ROOTDIR)/misc -lmisc
 LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran 
 
 
-all : tully1 multistate
+all : tully1 multistate nuscatter
 
 tully1 : hamiltonian.o tully1_hamiltonian.o tully1.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 multistate : hamiltonian.o multistate_hamiltonian.o multistate.cpp
+	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
+
+nuscatter : hamiltonian.o nuscatter_hamiltonian.o nuscatter.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 hamiltonian.o : hamiltonian.cpp
@@ -24,6 +28,9 @@ tully1_hamiltonian.o : tully1_hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 
 
 multistate_hamiltonian.o : multistate_hamiltonian.cpp
+	$(CXX) $(OPT) -o $@ -c $^ 
+
+nuscatter_hamiltonian.o : nuscatter_hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 
 
 misc : 

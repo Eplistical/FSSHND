@@ -137,19 +137,11 @@ namespace ioer
 
             // -- info -- //
 
-            //template <typename ParamType, typename enable_if< is_sequence_container<ParamType>::value, int>::type = 0>
             template <typename ParamType, typename enable_if< is_container<ParamType>::value, int>::type = 0>
                 void _info_helper(const ParamType& x, int) {
-                    auto it = x.begin();
-                    while (true) {
-                        _info(*it);
-                        ++it;
-                        if (it != x.end()) {
-                            stream_io_mgr_sing.at(m_path) << " ";
-                        }
-                        else {
-                            break;
-                        }
+                    for (auto& xi : x) {
+                        _info(xi);
+                        stream_io_mgr_sing.at(m_path) << " ";
                     }
                 }
 
@@ -194,16 +186,9 @@ namespace ioer
 
             template <typename ParamType, typename enable_if< is_container<ParamType>::value, int>::type = 0>
                 void _tabout_helper(const ParamType& x, int) {
-                    auto it = x.begin();
-                    while (true) {
-                        _info(*it);
-                        ++it;
-                        if (it != x.end()) {
-                            stream_io_mgr_sing.at(m_path) << setw(m_width);
-                        }
-                        else {
-                            break;
-                        }
+                    for (auto& xi : x) {
+                        _info(xi);
+                        stream_io_mgr_sing.at(m_path) << setw(m_width);
                     }
                 }
 
