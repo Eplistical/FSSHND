@@ -29,6 +29,7 @@ namespace mqc {
             // --- simualtion utils --- //
             void electronic_integrator(double /* dt */);
             void nuclear_integrator(double /* dt */);
+            void cal_Tmat();
             double cal_hop_prob(int /* from */, int /* to */, double /* dt */) const;
         public:
             // --- simulation --- //
@@ -111,6 +112,7 @@ namespace mqc {
             std::vector<std::vector<std::complex<double>>> m_dc;
             std::vector<double> m_eva;
             std::vector<std::complex<double>> m_evt;
+            std::vector<std::complex<double>> m_Tmat;
             // --- hop --- //
             int m_Nhop_accepted;
             int m_Nhop_frustrated;
@@ -163,9 +165,44 @@ namespace mqc {
         }
 
     template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::cal_Tmat() {
+            /**
+             * calculate T_jk = v \dot dc_jk
+             */
+            // calculation
+            m_Tmat.assign(m_edim * m_edim, matrixop::ZEROZ);
+            for (int j(0); j < m_edim; ++j) {
+                for (int k(0); k < j; ++k) {
+                    for (int i(0); i < m_ndim; ++i) {
+                        m_Tmat.at(j+k*m_edim) += m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
+                    }
+                    m_Tmat.at(k+j*m_edim) = -std::conj(m_Tmat.at(j+k*m_edim));
+                }
+            }
+        }
+    
+    template <typename HamiltonianType>
+        std::vector<double> FSSH_Trajectory<HamiltonianType>::cal_berry_force() {
+            /* 
+             * calculate current berry force
+             */
+            std::vector<double> F_berry(m_ndim, 0.0);
+            for (int i(0); i < m_ndim; ++i) {
+                for (int k(0); k < m_edim; ++k) {
+                    if (k != m_s) {
+                        F_berry.at(i) += (m_dc.at(i).at(m_s+k*m_edim) * m_Tmat.at(k+m_s*m_edim)).imag();
+                    }
+                }
+            }
+            F_berry *= 2.0;
+            return F_berry;
+        }
+
+
+    template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::die() {
             /*
-             * kill the trajectory and save only simple configuration info
+             * kill the trajectory, cannot change evolve any more
              */
             std::vector<double>().swap(m_randomforce);
             std::vector<std::vector<std::complex<double>>>().swap(m_force);
@@ -176,14 +213,7 @@ namespace mqc {
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::electronic_integrator(double dt) {
             // electronic integrator  -- RK4
-            std::vector<std::complex<double>> rk4_mat(m_edim * m_edim, 0.0);
-            for (int j(0); j < m_edim; ++j) {
-                for (int k(0); k < m_edim; ++k) {
-                    for (int i(0); i < m_ndim; ++i) {
-                        rk4_mat.at(j+k*m_edim) -= m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
-                    }
-                }
-            }
+            std::vector<std::complex<double>> rk4_mat = -m_Tmat;
             for (int j(0); j < m_edim; ++j) {
                 rk4_mat.at(j+j*m_edim) -= matrixop::IMAGIZ * m_eva.at(j);
             }
@@ -231,84 +261,42 @@ namespace mqc {
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
             // propagate trajectory forward by dt
-            misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
-            electronic_integrator(dt);
+            misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
+            // nuclear part
             nuclear_integrator(dt);
-            if (m_enable_hop) {
-                hopper(dt);
+            // electronic part, use dtq = min(dt, 0.02 / max(T))
+            double max_abs_T = 0.0;
+            for (auto& Tx : m_Tmat) {
+                max_abs_T = std::max(std::abs(Tx), max_abs_T);
             } 
+            double dtq = std::min(dt, 0.02 / max_abs_T);
+            int Ndtq = std::round(dt / dtq);
+            dtq = dt / Ndtq;
+            for (int idtq(0); idtq < Ndtq; ++idtq) {
+                electronic_integrator(dtq);
+                if (m_enable_hop) {
+                    hopper(dtq);
+                } 
+            }
+            // time part
             m_t += dt;
-            /*
-            // electronic part -- RK4
-            std::vector<std::complex<double>> rk4_mat(m_edim * m_edim, 0.0);
-            for (int j(0); j < m_edim; ++j) {
-                for (int k(0); k < m_edim; ++k) {
-                    for (int i(0); i < m_ndim; ++i) {
-                        rk4_mat.at(j+k*m_edim) -= m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
-                    }
-                }
-            }
-            for (int j(0); j < m_edim; ++j) {
-                rk4_mat.at(j+j*m_edim) -= matrixop::IMAGIZ * m_eva.at(j);
-            }
-            std::vector<std::complex<double>> k1, k2, k3, k4;
-            k1 = dt * matrixop::matmat(rk4_mat, m_c, m_edim);
-            k2 = dt * matrixop::matmat(rk4_mat, m_c + 0.5 * k1, m_edim);
-            k3 = dt * matrixop::matmat(rk4_mat, m_c + 0.5 * k2, m_edim);
-            k4 = dt * matrixop::matmat(rk4_mat, m_c + k3, m_edim);
-            m_c += 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
-            
-            // nuclear part -- velocity verlet
-            std::vector<double> random_force;
-            std::vector<double> tot_force;
-            // 1st force update
-            tot_force = cal_berry_force(); // berry force
-            for (int i(0); i < m_ndim; ++i) {
-                tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
-            }
-            if (m_gamma > 0.0) {
-                // friction & random force
-                // TODO : ADD FRICTION & RANDOM FORCE
-                random_force = randomer::vnormal(m_ndim, 0.0, std::sqrt(2.0 * m_gamma * m_kT / dt));
-                tot_force += -m_gamma * m_v + random_force;
-            }
-            // 1st conf update
-            m_v += 0.5 * dt / m_mass * tot_force;
-            m_r += dt * m_v;
-            update_status();
-            // 2nd force update 
-            tot_force = cal_berry_force(); // berry force
-            for (int i(0); i < m_ndim; ++i) {
-                tot_force.at(i) += m_force.at(i).at(m_s+m_s*m_edim).real(); // adiabatic force
-            }
-            if (m_gamma > 0.0) {
-                // friction & random force
-                tot_force += -m_gamma * m_v + random_force;
-            }
-            // 2nd conf update
-            m_v += 0.5 * dt / m_mass * tot_force;
-            update_status();
-            // update t
-            m_t += dt;
-            */
         }
 
+
     template <typename HamiltonianType>
-        double FSSH_Trajectory<HamiltonianType>::cal_hop_prob(int from, int to, double dt) const {
+        double FSSH_Trajectory<HamiltonianType>::cal_hop_prob(int j, int k, double dt) const {
             /*
-             * hopping probability for from->to
+             * hopping probability for j->k
              */
-            std::complex<double> v_dot_dc = matrixop::ZEROZ;
-            for (int i(0); i < m_ndim; ++i) {
-                v_dot_dc += m_v.at(i) * m_dc.at(i).at(to+from*m_edim);
-            }
-            double rst = -2.0 * dt * (m_c.at(from) * conj(m_c.at(to)) * v_dot_dc).real() / (m_c.at(from) * conj(m_c.at(from))).real();
+            const std::complex<double> rho_jk = m_c.at(j) * conj(m_c.at(k));
+            const std::complex<double> rho_jj = m_c.at(j) * conj(m_c.at(j));
+            const double rst = -2.0 * dt * (rho_jk * m_Tmat.at(k+j*m_edim)).real() / rho_jj.real();
             return rst > 0.0 ? rst : 0.0;
         }
 
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::hopper(double dt) {
-            misc::confirm<misc::StateError>(m_initialized, "FSSH_Trajectory died / not initialzied.");
+            misc::confirm<misc::StateError>(m_initialized, "hopper: FSSH_Trajectory died / not initialzied.");
             if (m_edim <= 1) {
                 // adiabatic dynamics, no hop
                 return ;
@@ -340,14 +328,8 @@ namespace mqc {
             if (to != from) {
                 // momentum rescaling direction
                 std::vector<double> n_rescale(m_ndim, 0.0);
-                
-                // Re(dc_jk * (v \dot dc_kj)) rescaling
-                std::complex<double> v_dot_dc = matrixop::ZEROZ;
                 for (int i(0); i < m_ndim; ++i) {
-                    v_dot_dc += m_v.at(i) * m_dc.at(i).at(to+from*m_edim);
-                }
-                for (int i(0); i < m_ndim; ++i) {
-                    n_rescale.at(i) = (m_dc.at(i).at(from+to*m_edim) * v_dot_dc).real();
+                    n_rescale.at(i) = (m_dc.at(i).at(from+to*m_edim) * m_Tmat.at(to+from*m_edim)).real();
                 }
                 misc::confirm<misc::RuntimeError>(norm(n_rescale) > 1e-40, "hopper: n_rescale has zero norm.");
 
@@ -399,7 +381,6 @@ namespace mqc {
             return rst;
         }
 
-
     // --- status --- //
 
 
@@ -409,29 +390,9 @@ namespace mqc {
              * update m_force, m_dc, m_eva, m_evt according to current m_r
              */
             m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
+            cal_Tmat();
         }
-    
-    template <typename HamiltonianType>
-        std::vector<double> FSSH_Trajectory<HamiltonianType>::cal_berry_force() {
-            /* 
-             * calculate current berry force
-             */
-            std::vector<double> F_berry(m_ndim, 0.0);
-            std::complex<double> v_dot_dc(0.0, 0.0);
-            for (int k(0); k < m_edim; ++k) {
-                if (k != m_s) {
-                    v_dot_dc = 0.0;
-                    for (int i(0); i < m_ndim; ++i) {
-                        v_dot_dc += m_v.at(i) * m_dc.at(i).at(k+m_s*m_edim);
-                    }
-                    for (int i(0); i < m_ndim; ++i) {
-                        F_berry.at(i) += (m_dc.at(i).at(m_s+k*m_edim) * v_dot_dc).imag();
-                    }
-                }
-            }
-            F_berry *= 2.0;
-            return F_berry;
-        }
+
 } // namespace mqc
 
 #endif // _FSSH_TRAJECTORY_HPP
