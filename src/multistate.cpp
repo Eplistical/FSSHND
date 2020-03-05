@@ -39,6 +39,7 @@ int Nstep = 10000;
 int output_step = 100;
 double dt = 0.1;
 bool enable_hop = true;
+bool enable_log = true;
 vector<double> potential_params;
 int seed = 42;
 unique_ptr<hamiltonian_t> hami;
@@ -96,6 +97,8 @@ bool argparse(int argc, char** argv)
         ("fric_gamma", po::value<decltype(fric_gamma)>(&fric_gamma), "friction gamma.")
         ("init_s", po::value<decltype(init_s)>(&init_s), "init_s")
         ("potential_params", po::value<decltype(potential_params)>(&potential_params)->multitoken(), "potential_params vector")
+        ("enable_hop", po::value<decltype(enable_hop)>(&enable_hop), "enable_hop")
+        ("enable_log", po::value<decltype(enable_log)>(&enable_log), "enable_log")
         ("seed", po::value<decltype(seed)>(&seed), "random seed")
         ;
     po::variables_map vm; 
@@ -113,7 +116,7 @@ void logging(const string& msg, int rank = 0) {
     /**
      * print out log message
      */
-    if (MPIer::rank == rank) {
+    if (enable_log and MPIer::master) {
         ioer::info(msg);
     }
 }
@@ -180,6 +183,7 @@ void run() {
                 break;
             }
         }
+
         // propagation
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
