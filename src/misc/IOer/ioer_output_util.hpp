@@ -188,10 +188,7 @@ namespace ioer
                 void _tabout_helper(const ParamType& x, int) {
                     for (auto& xi : x) {
                         _tabout(xi);
-<<<<<<< HEAD
-=======
                         stream_io_mgr_sing.at(m_path) << setw(m_width);
->>>>>>> 39ce6d2758378fd919ace343ffb073b2a333069c
                     }
                 }
 
