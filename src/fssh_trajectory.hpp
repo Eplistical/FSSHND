@@ -263,7 +263,7 @@ namespace mqc {
                     prob.at(from) -= prob.at(to);
                 }
             }
-            misc::confirm<misc::ValueError>(prob.at(from) > 0.3, "hopper: hop prob too large, try a smaller dt.");
+            misc::confirm<misc::ValueError>(prob.at(from) > 0.0, "hopper: hop prob too large, try a smaller dt.");
             // determine whether hop happens 
             const double randnum = randomer::rand(0.0, 1.0);
             double accu = 0.0;
@@ -352,19 +352,19 @@ namespace mqc {
             misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
             // nuclear part
             nuclear_integrator(dt);
-            // electronic part, use dtq = min(dt, 0.02 / max(T))
+            // electronic part, use dtq = min(dt, 0.01 / max(T))
             double max_abs_T = 0.0;
             for (auto& Tx : m_Tmat) {
                 max_abs_T = std::max(std::abs(Tx), max_abs_T);
             } 
-            double dtq = std::min(dt, 0.02 / max_abs_T);
+            double dtq = std::min(dt, 0.01 / max_abs_T);
             int Ndtq = std::round(dt / dtq);
             dtq = dt / Ndtq;
             for (int idtq(0); idtq < Ndtq; ++idtq) {
-                electronic_integrator(dtq);
                 if (m_enable_hop) {
                     hopper(dtq);
                 } 
+                electronic_integrator(dtq);
             }
             // time part
             m_t += dt;
