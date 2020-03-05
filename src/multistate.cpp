@@ -420,8 +420,8 @@ int main(int argc, char** argv) {
         ioer::info("# ", timer::toc());
         MPIer::abort();
     }
-    if (MPIer::master) ioer::info("# Time elapsed: ", timer::toc());
-    if (MPIer::master) ioer::info("# Now: ", timer::now());
+    if (MPIer::master) ioer::info("#", timer::toc());
+    if (MPIer::master) ioer::info("#", timer::now());
     MPIer::barrier();
     MPIer::finalize();
     return 0;

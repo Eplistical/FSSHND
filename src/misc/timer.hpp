@@ -69,7 +69,7 @@ namespace timer {
     {
 		const time_t _now = system_clock::to_time_t(system_clock::now());
 		ostringstream buf;
-		buf << ctime(&_now);
+		buf << "Now: " << ctime(&_now);
 		return buf.str();
 	}
 
