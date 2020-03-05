@@ -112,7 +112,7 @@ bool argparse(int argc, char** argv)
     return true;
 }
 
-void logging(const string& msg) {
+void logging(const string& msg, int rank = 0) {
     /**
      * print out log message
      */

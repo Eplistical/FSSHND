@@ -13,14 +13,17 @@ namespace mqc {
 
     class Tully1_Hamiltonian final : public Hamiltonian {
         public:
-            // --- ctor/dtor --- //
+            // --- ctor/dtor/operator= --- //
             Tully1_Hamiltonian();
+            Tully1_Hamiltonian(const Tully1_Hamiltonian& /* other */) = default;
+            Tully1_Hamiltonian& operator=(const Tully1_Hamiltonian& /* other */) = default;
             ~Tully1_Hamiltonian() = default;
         private:
-            // --- quantities --- //
+            // --- utils --- //
             double cal_phi(const std::vector<double>& /* r */) const;
             std::vector<double> cal_nabla_phi(const std::vector<double>& /* r */) const;
         public:
+            // --- interfaces --- //
             virtual std::vector<std::complex<double>> cal_H(const std::vector<double>& /* r */) const override;
             virtual std::vector<std::vector<std::complex<double>>> cal_nablaH(const std::vector<double>& /* r */) const override;
     };

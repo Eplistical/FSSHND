@@ -11,7 +11,7 @@
 namespace mqc {
 
 
-    // --- ctor/dtor --- //
+    // --- ctor/dtor/operator= --- //
 
 
     Multistate_Hamiltonian::Multistate_Hamiltonian(int dim) 
@@ -32,7 +32,8 @@ namespace mqc {
     }
 
 
-    // --- quantities --- //
+    // --- utils --- //
+
 
     double Multistate_Hamiltonian::cal_phi(const std::vector<double>& r, int k) const {
         return m_params.at("W") * (r.at(k) + r.at(k+1));
@@ -45,8 +46,12 @@ namespace mqc {
         return nabla_phi;
     }
 
+
+    // --- interfaces --- //
+
+
     std::vector<std::complex<double>> Multistate_Hamiltonian::cal_H(const std::vector<double>& r) const {
-        /*
+        /**
          * input : r
          * output : H(r)
          */
@@ -73,7 +78,7 @@ namespace mqc {
     }
 
     std::vector<std::vector<std::complex<double>>> Multistate_Hamiltonian::cal_nablaH(const std::vector<double>& r) const {
-        /*
+        /**
          * input : r
          * output : nablaH(r)
          */
