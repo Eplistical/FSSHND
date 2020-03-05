@@ -11,16 +11,19 @@
 namespace mqc {
 
 
-    // --- ctor/dtor --- //
+    // --- ctor/dtor/operator= --- //
+
+
     Hamiltonian::Hamiltonian(int dim) 
     : m_dim(dim)
     { }
 
-    // --- parameters --- //
+
+    // --- utils interfacs --- //
 
 
     void Hamiltonian::set_params(const std::vector<double>& params) {
-        /*
+        /**
          * set params with a vector
          *  params are ordered alphabetically
          */
@@ -35,7 +38,7 @@ namespace mqc {
     }
 
     void Hamiltonian::output_params() const noexcept {
-        /*
+        /**
          * output parameters
          */
         std::cout << std::string(32, '#') << std::endl;
@@ -50,7 +53,7 @@ namespace mqc {
     }
 
 
-    // --- quantities --- //
+    // --- interfaces --- //
 
 
     void Hamiltonian::cal_info( const std::vector<double>& r,
@@ -58,7 +61,7 @@ namespace mqc {
         std::vector<std::vector<std::complex<double>>>& dc,
         std::vector<double>& eva,
         std::vector<std::complex<double>>& lastevt) const {
-            /*
+            /**
              * input r and lastevt (evt from the last step) 
              * output force, dc, eva and evt (repalces lastevt on exit)
              */
@@ -99,4 +102,4 @@ namespace mqc {
             lastevt = std::move(evt);
     }
 
-};
+}

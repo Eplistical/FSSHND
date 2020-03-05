@@ -14,15 +14,17 @@ namespace mqc {
 
     class Hamiltonian {
         public:
-            // --- ctor/dtor --- //
-            Hamiltonian(int dim);
+            // --- ctor/dtor/opetator= --- //
+            explicit Hamiltonian(int /* dim */);
+            Hamiltonian(const Hamiltonian& /* other */) = default;
+            Hamiltonian& operator=(const Hamiltonian& /* other */) = default;
             virtual ~Hamiltonian() = default;
         public:
-            // --- parameters --- //
+            // --- utils interfaces --- //
             virtual void set_params(const std::vector<double>& /* params */);
             virtual void output_params() const noexcept;
         public:
-            // --- quantities --- //
+            // --- interfaces --- //
             virtual std::vector<std::complex<double>> cal_H(const std::vector<double>& /* r */) const = 0;
             virtual std::vector<std::vector<std::complex<double>>> cal_nablaH(const std::vector<double>& /* r */) const = 0;
             virtual void cal_info( const std::vector<double>& /* r */,

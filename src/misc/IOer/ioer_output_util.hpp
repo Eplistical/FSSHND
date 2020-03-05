@@ -187,7 +187,7 @@ namespace ioer
             template <typename ParamType, typename enable_if< is_container<ParamType>::value, int>::type = 0>
                 void _tabout_helper(const ParamType& x, int) {
                     for (auto& xi : x) {
-                        _info(xi);
+                        _tabout(xi);
                         stream_io_mgr_sing.at(m_path) << setw(m_width);
                     }
                 }

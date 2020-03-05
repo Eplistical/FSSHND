@@ -9,7 +9,7 @@
 namespace mqc {
 
 
-    // --- ctor/dtor --- //
+    // --- ctor/dtor/operator= --- //
 
 
     Tully1_Hamiltonian::Tully1_Hamiltonian() 
@@ -34,7 +34,7 @@ namespace mqc {
     }
 
 
-    // --- quantities --- //
+    // --- utils --- //
 
 
     double Tully1_Hamiltonian::cal_phi(const std::vector<double>& r) const {
@@ -45,8 +45,12 @@ namespace mqc {
         return std::vector<double> { m_params.at("Wx"), m_params.at("Wy") };
     }
 
+
+    // --- interfaces --- //
+
+
     std::vector<std::complex<double>> Tully1_Hamiltonian::cal_H(const std::vector<double>& r) const {
-        /*
+        /**
          * input : r
          * output : H(r)
          */
@@ -71,7 +75,7 @@ namespace mqc {
     }
 
     std::vector<std::vector<std::complex<double>>> Tully1_Hamiltonian::cal_nablaH(const std::vector<double>& r) const {
-        /*
+        /**
          * input : r
          * output : nablaH(r)
          */
