@@ -352,19 +352,65 @@ namespace mqc {
             misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
             // nuclear part
             nuclear_integrator(dt);
-            // electronic part, use dtq = min(dt, 0.01 / max(T))
-            double max_abs_T = 0.0;
-            for (auto& Tx : m_Tmat) {
-                max_abs_T = std::max(std::abs(Tx), max_abs_T);
-            } 
-            double dtq = std::min(dt, 0.01 / max_abs_T);
-            int Ndtq = std::round(dt / dtq);
-            dtq = dt / Ndtq;
-            for (int idtq(0); idtq < Ndtq; ++idtq) {
-                if (m_enable_hop) {
-                    hopper(dtq);
+            // electronic part
+            if (not m_enable_hop) {
+                // hop disabled
+                electronic_integrator(dt);
+            }
+            else {
+                // hop enabled, make sure dt is not too large
+                double dtq = dt;
+                double accu_dtq = 0.0;
+                while (accu_dtq < dt) {
+                    if (dt - accu_dtq < dtq) {
+                        dtq = dt - accu_dtq;
+                    }
+                    try {
+                        hopper(dtq);
+                    } catch (const misc::ValueError& e) {
+                        // catch exception: need to reduce dtq
+                        dtq *= 0.5;
+                        continue;
+                    }
+                    electronic_integrator(dtq);
+                    accu_dtq += dtq;
+                }
+                /*
+                double max_abs_T = 0.0;
+                for (auto& Tx : m_Tmat) {
+                    max_abs_T = std::max(std::abs(Tx), max_abs_T);
                 } 
-                electronic_integrator(dtq);
+                double dtq = std::min(dt, 0.02 / max_abs_T);
+                int Ndtq = std::round(dt / dtq);
+                dtq = dt / Ndtq;
+                for (int idtq(0); idtq < Ndtq; ++idtq) {
+                    // propagate dtq forward
+                    double cur_dtq = dtq;
+                    double accu_dtq = 0.0;
+                    while (accu_dtq < dtq) {
+                        if (dtq - accu_dtq < cur_dtq) {
+                            cur_dtq = dtq - accu_dtq;
+                        }
+                        try {
+                            hopper(cur_dtq);
+                        } catch (const misc::ValueError& e) {
+                            // catch exception: need to reduce cur_dtq
+                            cur_dtq *= 0.5;
+                            continue;
+                        }
+                        electronic_integrator(cur_dtq);
+                        accu_dtq += cur_dtq;
+                    }
+                }
+                */
+                /*
+                for (int idtq(0); idtq < Ndtq; ++idtq) {
+                    if (m_enable_hop) {
+                        hopper(dtq);
+                    } 
+                    electronic_integrator(dtq);
+                }
+                */
             }
             // time part
             m_t += dt;
