@@ -396,7 +396,7 @@ int main(int argc, char** argv) {
     if (argparse(argc, argv) == false) {
         return -1;
     }
-    randomer::seed(seed);
+    randomer::seed(MPIer::assign_random_seed(seed));
     timer::tic();
     try { 
         run();

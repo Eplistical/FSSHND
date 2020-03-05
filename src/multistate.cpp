@@ -116,7 +116,7 @@ void logging(const string& msg, int rank = 0) {
     /**
      * print out log message
      */
-    if (enable_log and MPIer::master) {
+    if (enable_log and MPIer::rank == rank) {
         ioer::info(msg);
     }
 }
@@ -273,6 +273,8 @@ void run() {
                 "p", vector<string>(ndim - 1, ""),
                 "s", 
                 "diab_pop", vector<string>(edim - 1, ""),
+                "KE",
+                "PE",
                 "Etot"
                 );
         // dynamics output
@@ -313,10 +315,10 @@ void run() {
 
             nd /= Ntraj;
 
-            ioer::tabout("#", t, r, p, s, nd, KE + PE);
+            ioer::tabout("#", t, r, p, s, nd, KE, PE, KE + PE);
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(r, p, s, nd, KE + PE);
+                ioer::tabout(r, p, s, nd, KE, PE, KE + PE);
             }
         }
     }
@@ -408,7 +410,7 @@ int main(int argc, char** argv) {
     if (argparse(argc, argv) == false) {
         return -1;
     }
-    randomer::seed(seed);
+    randomer::seed(MPIer::assign_random_seed(seed));
     timer::tic();
     try { 
         run();
