@@ -332,7 +332,6 @@ namespace mqc {
             m_initialized = true;
         }
 
-
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::die() {
             /**
@@ -343,6 +342,7 @@ namespace mqc {
             std::vector<std::vector<std::complex<double>>>().swap(m_dc);
             m_initialized = false;
         }
+
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::integrator(double dt) {
             /**
