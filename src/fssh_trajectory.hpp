@@ -183,7 +183,7 @@ namespace mqc {
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::electronic_integrator(double dt) {
             /**
-             * electronic integrator  -- RK4
+             * electronic integrator -- RK4
              */
             std::vector<std::complex<double>> rk4_mat = -m_Tmat;
             for (int j(0); j < m_edim; ++j) {
@@ -358,24 +358,7 @@ namespace mqc {
                 electronic_integrator(dt);
             }
             else {
-                // hop enabled, make sure dt is not too large
-                double dtq = dt;
-                double accu_dtq = 0.0;
-                while (accu_dtq < dt) {
-                    if (dt - accu_dtq < dtq) {
-                        dtq = dt - accu_dtq;
-                    }
-                    try {
-                        hopper(dtq);
-                    } catch (const misc::ValueError& e) {
-                        // catch exception: need to reduce dtq
-                        dtq *= 0.5;
-                        continue;
-                    }
-                    electronic_integrator(dtq);
-                    accu_dtq += dtq;
-                }
-                /*
+                // hop enabled, make sure dtq is not too large
                 double max_abs_T = 0.0;
                 for (auto& Tx : m_Tmat) {
                     max_abs_T = std::max(std::abs(Tx), max_abs_T);
@@ -402,15 +385,8 @@ namespace mqc {
                         accu_dtq += cur_dtq;
                     }
                 }
-                */
-                /*
-                for (int idtq(0); idtq < Ndtq; ++idtq) {
-                    if (m_enable_hop) {
-                        hopper(dtq);
-                    } 
-                    electronic_integrator(dtq);
-                }
-                */
+                // check 
+                misc::confirm<misc::ValueError>(norm2(m_c) < 2, "integrator: electronic amplitude diverges.");
             }
             // time part
             m_t += dt;
