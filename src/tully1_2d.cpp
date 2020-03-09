@@ -3,7 +3,7 @@
 #include <complex>
 #include <memory>
 #include <vector>
-#include "tully1_hamiltonian.hpp"
+#include "tully1_2d_hamiltonian.hpp"
 #include "fssh_trajectory.hpp"
 #include "traj_recorder.hpp"
 #include "misc/vector.hpp"
@@ -19,18 +19,18 @@ using namespace mqc;
 using namespace std;
 namespace po = boost::program_options;
 
-using hamiltonian_t = Tully1_Hamiltonian;
+using hamiltonian_t = Tully1_2D_Hamiltonian;
 using trajectory_t = FSSH_Trajectory<hamiltonian_t>;
 using recorder_t = traj_recorder<trajectory_t>;
 
-int ndim = 1;
+int ndim = 2;
 int edim = 2;
 double mass = 2000.0;
 int init_s = 0;
-vector<double> init_r { -6.0 };
-vector<double> init_p { 20.0 };
-vector<double> sigma_r { 0.0 };
-vector<double> sigma_p { 0.0 };
+vector<double> init_r { -6.0, 0.0 };
+vector<double> init_p { 20.0, 0.0 };
+vector<double> sigma_r { 0.5, 0.5 };
+vector<double> sigma_p { 1.0, 1.0 };
 int Ntraj = 2000;
 int Nstep = 100000;
 int output_step = 1000;
@@ -241,7 +241,8 @@ void run() {
                     "");
         ioer::tabout("#", "t", 
                 "n0T", "n0R", "n1T", "n1R",
-                "p0T", "p0R", "p1T", "p1R",
+                "px0T", "py0T", "px0R", "py0R",
+                "px1T", "py1T", "px1R", "py1R",
                 "Etot"
                 );
         // dynamics output
@@ -256,38 +257,47 @@ void run() {
             // population
             double n0T = 0.0, n0R = 0.0, n1T = 0.0, n1R = 0.0;
             // momentum 
-            double p0T = 0.0, p0R = 0.0, p1T = 0.0, p1R = 0.0;
+            double px0T = 0.0, py0T = 0.0, px0R = 0.0, py0R = 0.0;
+            double px1T = 0.0, py1T = 0.0, px1R = 0.0, py1R = 0.0;
             // enegry
             double KE = 0.0, PE = 0.0;
             for (int itraj(0); itraj < Ntraj; ++itraj) {
                 if (sarr.at(itraj) == 0) {
                     if (rarr.at(0+itraj*ndim) < 0.0) {
                         n0R += 1.0;
-                        p0R += varr.at(0+itraj*ndim);
+                        px0R += varr.at(0+itraj*ndim);
+                        py0R += varr.at(1+itraj*ndim);
                     }
                     else {
                         n0T += 1.0;
-                        p0T += varr.at(0+itraj*ndim);
+                        px0T += varr.at(0+itraj*ndim);
+                        py0T += varr.at(1+itraj*ndim);
                     }
                 }
                 else if (sarr.at(itraj) == 1) {
                     if (rarr.at(0+itraj*ndim) < 0.0) {
                         n1R += 1.0;
-                        p1R += varr.at(0+itraj*ndim);
+                        px1R += varr.at(0+itraj*ndim);
+                        py1R += varr.at(1+itraj*ndim);
                     }
                     else {
                         n1T += 1.0;
-                        p1T += varr.at(0+itraj*ndim);
+                        px1T += varr.at(0+itraj*ndim);
+                        py1T += varr.at(1+itraj*ndim);
                     }
                 }
                 KE += KEarr.at(itraj);
                 PE += PEarr.at(itraj);
             }
 
-            p0R *= (n0R == 0 ? 0.0 : (mass / n0R));
-            p0T *= (n0T == 0 ? 0.0 : (mass / n0T));
-            p1R *= (n1R == 0 ? 0.0 : (mass / n1R));
-            p1T *= (n1T == 0 ? 0.0 : (mass / n1T));
+            px0R *= (n0R == 0 ? 0.0 : (mass / n0R));
+            py0R *= (n0R == 0 ? 0.0 : (mass / n0R));
+            px0T *= (n0T == 0 ? 0.0 : (mass / n0T));
+            py0T *= (n0T == 0 ? 0.0 : (mass / n0T));
+            px1R *= (n1R == 0 ? 0.0 : (mass / n1R));
+            py1R *= (n1R == 0 ? 0.0 : (mass / n1R));
+            px1T *= (n1T == 0 ? 0.0 : (mass / n1T));
+            py1T *= (n1T == 0 ? 0.0 : (mass / n1T));
 
             n0R /= Ntraj;
             n0T /= Ntraj;
@@ -299,14 +309,16 @@ void run() {
 
             ioer::tabout("#", t, 
                     n0T, n0R, n1T, n1R,
-                    p0T, p0R, p1T, p1R,
+                    px0T, py0T, px0R, py0R,
+                    px1T, py1T, px1R, py1R,
                     KE + PE
                     );
             // final output
             if (irec == Nrec - 1) {
                 ioer::tabout(init_p.at(0),
                         n0T, n0R, n1T, n1R,
-                        p0T, p0R, p1T, p1R,
+                        px0T, py0T, px0R, py0R,
+                        px1T, py1T, px1R, py1R,
                         KE + PE
                         );
             }

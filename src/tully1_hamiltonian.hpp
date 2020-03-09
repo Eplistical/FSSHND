@@ -2,7 +2,7 @@
 #define _TULLY1_HAMILTONIAN_HPP
 
 /* 
- * Tully1 Hamiltonian 
+ * Classical 1D Tully1 Hamiltonian 
  */
 
 #include <vector>
@@ -18,10 +18,6 @@ namespace mqc {
             Tully1_Hamiltonian(const Tully1_Hamiltonian& /* other */) = default;
             Tully1_Hamiltonian& operator=(const Tully1_Hamiltonian& /* other */) = default;
             ~Tully1_Hamiltonian() = default;
-        private:
-            // --- utils --- //
-            double cal_phi(const std::vector<double>& /* r */) const;
-            std::vector<double> cal_nabla_phi(const std::vector<double>& /* r */) const;
         public:
             // --- interfaces --- //
             virtual std::vector<std::complex<double>> cal_H(const std::vector<double>& /* r */) const override;
