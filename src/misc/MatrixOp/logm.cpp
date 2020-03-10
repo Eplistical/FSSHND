@@ -17,14 +17,14 @@ namespace matrixop {
         vector<ZTYPE> AA(matCmat(A, A, N));
         for (int i(0); i < N; ++i) {
             for (int j(0); j < N; ++j) {
-                if ((i == j and std::abs(AA[i+j*N] - 1.0) > 1e-10) or
-                            (i != j and std::abs(AA[i+j*N]) > 1e-10))
+                if ((i == j and std::abs(AA[i+j*N] - 1.0) > 1e-6) or
+                            (i != j and std::abs(AA[i+j*N]) > 1e-6))
                   throw std::runtime_error("matrixop::logmh : input matrix is not orthogonal!");
             }
         }
         // check positive elements
         for (int i(0); i < N; ++i) {
-            if (std::abs(A[i+i*N].imag()) > 1e-10) {
+            if (std::abs(A[i+i*N].imag()) > 1e-6) {
                 throw std::runtime_error("matrixop::logmh : complex-valued diagonal elements found!");
             }
             else if (A[i+i*N].real() <= 0.0) {

@@ -11,6 +11,7 @@
 #include "misc/matrixop.hpp"
 #include "misc/randomer.hpp"
 #include "misc/vector.hpp"
+#include "misc/fmtstring.hpp"
 
 
 namespace mqc {
@@ -165,6 +166,7 @@ namespace mqc {
         void FSSH_Trajectory<HamiltonianType>::update_status(double dt) {
             /**
              * update status of the trajectory current configuration
+             * if dt > 0, m_Tmat will be updated.
              */
             if (dt <= 0.0) {
                 // dt <= 0.0 indicates this is the first step, calculate T = v \dot dc
@@ -174,26 +176,7 @@ namespace mqc {
             else {
                 // dt > 0.0, calculate T = log[U(dt)] / dt, U_jk(dt) = <psi_j(t0) | psi_k(t0 + dt)>
                 misc::confirm<misc::StateError> (not m_evt.empty(), "update_status: dt > 0.0 while m_evt is empty!");
-                auto lastevt = m_evt;
-
-                /*
-                m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
-                cal_Tmat();
-                */
-
                 m_hamiltonian.cal_info_Tmat(m_r, m_force, m_dc, m_eva, m_evt, m_Tmat, dt);
-
-                /*
-                auto TTT = m_Tmat;
-                cal_Tmat();
-
-                auto diff = norm(TTT - m_Tmat);
-                if (diff > 1e-3) {
-                    std::cout << "Diff = " << diff << std::endl;
-                }
-
-                m_Tmat = TTT;
-                */
             }
         }
 
@@ -414,6 +397,7 @@ namespace mqc {
             m_eva.swap(lasteva);
             for (int idtq(0); idtq < Ndtq; ++idtq) {
                 electronic_integrator(dtq);
+                misc::confirm<misc::ValueError>(norm(m_c) < 2.0, ("integrator: norm(c) diverges."));
                 if (m_enable_hop) {
                     hopper(dtq);
                 } 
