@@ -2,7 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <complex>
-#include "cal_Tmat.hpp"
+#include "adjust_evt_phase.hpp"
 #include "misc/crasher.hpp"
 #include "misc/vector.hpp"
 #include "misc/matrixop.hpp"
@@ -464,7 +464,7 @@ namespace mqc {
         }
 
 
-        std::vector<std::complex<double>> cal_Tmat(const std::vector<std::complex<double>>& curevt, std::vector<std::complex<double>>& nextevt, int NNN, double timestep) {
+        std::vector<std::complex<double>> adjust_evt_phase(const std::vector<std::complex<double>>& curevt, std::vector<std::complex<double>>& nextevt, int NNN, double timestep) {
             /**
              * get the correct phases for next evt, and return correpsonding T matrix
              */
@@ -558,23 +558,25 @@ namespace mqc {
                     minimumvalue = tempminvalue;
                 }
             }	
-            UUU = zmatmat(curevt, tempnextevt, NNN, "C", "N");
-
             //Save eigenvectors at t_0+dt_c with correct signs
             nextevt = tempnextevt;
-            //nextvals.usign = zmatmat(currentvals.usign, UUU, NNN, "N", "N");
-            //T = logm(U)/dt_c
-            std::fill(logeigU.begin(), logeigU.end(), 0.0);
-            //logeigU = mlog(UUU, NNN, nextvals.flagcontinue);
-            bool wrongflag = false;
-            logeigU = mlog(UUU, NNN, wrongflag);
-            //nextvals.TTT.resize(NNN * NNN, 0.0);
-            std::vector<std::complex<double>> TTT(NNN * NNN, 0.0);
-            for (ii = 0; ii < NNN * NNN; ii++) {
-                TTT[ii] = logeigU[ii] / timestep;
+
+            if (timestep > 0.0) {
+                // dt > 0, return T = logm(U) / dt_c
+                UUU = zmatmat(curevt, tempnextevt, NNN, "C", "N");
+                std::fill(logeigU.begin(), logeigU.end(), 0.0);
+                bool flagwrong = false;
+                logeigU = mlog(UUU, NNN, flagwrong);
+                std::vector<std::complex<double>> TTT(NNN * NNN, 0.0);
+                for (ii = 0; ii < NNN * NNN; ii++) {
+                    TTT[ii] = logeigU[ii] / timestep;
+                }   
+                return TTT;
             }
-            //return nextvals;
-            return TTT;
+            else {
+                // dt <= 0, do not evaluate T
+                return std::vector<std::complex<double>>();
+            }
         }
 
 

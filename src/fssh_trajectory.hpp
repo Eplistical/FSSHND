@@ -11,7 +11,6 @@
 #include "misc/matrixop.hpp"
 #include "misc/randomer.hpp"
 #include "misc/vector.hpp"
-#include "cal_Tmat.hpp"
 
 
 namespace mqc {
@@ -31,6 +30,7 @@ namespace mqc {
             ~FSSH_Trajectory() = default;
         private:
             // --- simualtion utils --- //
+            void cal_Tmat();
             void update_status(double /* dt */);
             std::vector<double> cal_berry_force();
             void nuclear_integrator(double /* dt */);
@@ -90,6 +90,9 @@ namespace mqc {
             inline bool get_enable_hop() const noexcept { return m_enable_hop; }
             inline void set_enable_hop(bool enable_hop) { m_enable_hop = enable_hop; }
 
+            inline bool get_enable_berry_force() const noexcept { return m_enable_berry_force; }
+            inline void set_enable_berry_force(bool enable_berry_force) { m_enable_berry_force = enable_berry_force; }
+
             inline std::vector<double> get_eva() const noexcept { return m_eva; }
             inline std::vector<std::complex<double>> get_evt() const noexcept { return m_evt; }
             inline std::vector<std::vector<std::complex<double>>> get_force() const noexcept { return m_force; }
@@ -121,6 +124,7 @@ namespace mqc {
             // --- options/flags --- //
             bool m_initialized;
             bool m_enable_hop;
+            bool m_enable_berry_force;
     };
 
 
@@ -142,6 +146,22 @@ namespace mqc {
 
 
     template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::cal_Tmat() {
+            /**
+             * calculate T_jk = v \dot dc_jk
+             */
+            m_Tmat.assign(m_edim * m_edim, matrixop::ZEROZ);
+            for (int j(0); j < m_edim; ++j) {
+                for (int k(0); k < j; ++k) {
+                    for (int i(0); i < m_ndim; ++i) {
+                        m_Tmat.at(j+k*m_edim) += m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
+                    }
+                    m_Tmat.at(k+j*m_edim) = -std::conj(m_Tmat.at(j+k*m_edim));
+                }
+            }
+        }
+
+    template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::update_status(double dt) {
             /**
              * update status of the trajectory current configuration
@@ -149,24 +169,31 @@ namespace mqc {
             if (dt <= 0.0) {
                 // dt <= 0.0 indicates this is the first step, calculate T = v \dot dc
                 m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
-                m_Tmat.assign(m_edim * m_edim, matrixop::ZEROZ);
-                for (int j(0); j < m_edim; ++j) {
-                    for (int k(0); k <= j; ++k) {
-                        for (int i(0); i < m_ndim; ++i) {
-                            m_Tmat.at(j+k*m_edim) += m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
-                        }
-                        if (j != k) {
-                            m_Tmat.at(k+j*m_edim) = -conj(m_Tmat.at(j+k*m_edim));
-                        }
-                    }
-                }
+                cal_Tmat();
             }
             else {
                 // dt > 0.0, calculate T = log[U(dt)] / dt, U_jk(dt) = <psi_j(t0) | psi_k(t0 + dt)>
                 misc::confirm<misc::StateError> (not m_evt.empty(), "update_status: dt > 0.0 while m_evt is empty!");
                 auto lastevt = m_evt;
+
+                /*
                 m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
-                m_Tmat = zeyu::cal_Tmat(lastevt, m_evt, m_edim, dt);
+                cal_Tmat();
+                */
+
+                m_hamiltonian.cal_info_Tmat(m_r, m_force, m_dc, m_eva, m_evt, m_Tmat, dt);
+
+                /*
+                auto TTT = m_Tmat;
+                cal_Tmat();
+
+                auto diff = norm(TTT - m_Tmat);
+                if (diff > 1e-3) {
+                    std::cout << "Diff = " << diff << std::endl;
+                }
+
+                m_Tmat = TTT;
+                */
             }
         }
 
@@ -177,14 +204,16 @@ namespace mqc {
              * calculate current berry force
              */
             std::vector<double> F_berry(m_ndim, 0.0);
-            for (int i(0); i < m_ndim; ++i) {
-                for (int k(0); k < m_edim; ++k) {
-                    if (k != m_s) {
-                        F_berry.at(i) += (m_dc.at(i).at(m_s+k*m_edim) * m_Tmat.at(k+m_s*m_edim)).imag();
+            if (m_enable_berry_force) {
+                for (int i(0); i < m_ndim; ++i) {
+                    for (int k(0); k < m_edim; ++k) {
+                        if (k != m_s) {
+                            F_berry.at(i) += (m_dc.at(i).at(m_s+k*m_edim) * m_Tmat.at(k+m_s*m_edim)).imag();
+                        }
                     }
                 }
+                F_berry *= 2.0;
             }
-            F_berry *= 2.0;
             return F_berry;
         }
 
@@ -237,7 +266,6 @@ namespace mqc {
             }
             // 2nd conf update
             m_v += 0.5 * dt / m_mass * tot_force;
-            update_status(dt);
         }
             
     template <typename HamiltonianType>

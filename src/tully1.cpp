@@ -36,6 +36,7 @@ int Nstep = 100000;
 int output_step = 1000;
 double dt = 0.1;
 bool enable_hop = true;
+bool enable_berry_force = true;
 bool enable_log = true;
 vector<double> potential_params;
 int seed = 42;
@@ -82,6 +83,7 @@ bool argparse(int argc, char** argv)
         ("init_s", po::value<decltype(init_s)>(&init_s), "init_s")
         ("potential_params", po::value<decltype(potential_params)>(&potential_params)->multitoken(), "potential_params vector")
         ("enable_hop", po::value<decltype(enable_hop)>(&enable_hop), "enable hop")
+        ("enable_berry_force", po::value<decltype(enable_berry_force)>(&enable_berry_force), "enable berry_force")
         ("enable_log", po::value<decltype(enable_log)>(&enable_log), "enable log")
         ("seed", po::value<decltype(seed)>(&seed), "random seed")
         ;
@@ -123,6 +125,7 @@ vector<trajectory_t> gen_swarm(int Ntraj) {
         }
         swarm.back().setup(mass, r, v, init_c, init_s);
         swarm.back().set_enable_hop(enable_hop);
+        swarm.back().set_enable_berry_force(enable_berry_force);
     }
     return swarm;
 }

@@ -33,6 +33,14 @@ namespace mqc {
                 std::vector<double>& /* eva */,
                 std::vector<std::complex<double>>& /* lastevt */
                 ) const;
+            virtual void cal_info_Tmat( const std::vector<double>& /* r */,
+                std::vector<std::vector<std::complex<double>>>& /* force */,
+                std::vector<std::vector<std::complex<double>>>& /* dc */,
+                std::vector<double>& /* eva */,
+                std::vector<std::complex<double>>& /* lastevt */,
+                std::vector<std::complex<double>>& /* Tmat */,
+                double /* dt */
+                ) const;
         public:
             inline int get_dim() const noexcept { return m_dim; }
 
