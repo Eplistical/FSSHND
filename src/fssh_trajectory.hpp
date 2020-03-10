@@ -11,6 +11,7 @@
 #include "misc/matrixop.hpp"
 #include "misc/randomer.hpp"
 #include "misc/vector.hpp"
+#include "cal_Tmat.hpp"
 
 
 namespace mqc {
@@ -24,11 +25,13 @@ namespace mqc {
         public:
             // --- ctor/dtor --- //
             FSSH_Trajectory(const HamiltonianType& /* hamiltonian */);
+            FSSH_Trajectory(const FSSH_Trajectory<HamiltonianType>& /* other */) = default;
+            FSSH_Trajectory<HamiltonianType>& operator=(const FSSH_Trajectory<HamiltonianType>& /* other */) = default;
+            // --- simualtion utils --- //
             ~FSSH_Trajectory() = default;
         private:
             // --- simualtion utils --- //
-            void cal_Tmat();
-            void update_status();
+            void update_status(double /* dt */);
             std::vector<double> cal_berry_force();
             void nuclear_integrator(double /* dt */);
             void electronic_integrator(double /* dt */);
@@ -44,6 +47,7 @@ namespace mqc {
             // --- other interfaces --- //
             double cal_KE() const;
             double cal_PE() const;
+            double cal_totE() const;
             std::vector<double> cal_diab_pop() const;
         public:
             // --- getter/setter --- //
@@ -138,28 +142,32 @@ namespace mqc {
 
 
     template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::cal_Tmat() {
-            /**
-             * calculate T_jk = v \dot dc_jk
-             */
-            m_Tmat.assign(m_edim * m_edim, matrixop::ZEROZ);
-            for (int j(0); j < m_edim; ++j) {
-                for (int k(0); k < j; ++k) {
-                    for (int i(0); i < m_ndim; ++i) {
-                        m_Tmat.at(j+k*m_edim) += m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
-                    }
-                    m_Tmat.at(k+j*m_edim) = -std::conj(m_Tmat.at(j+k*m_edim));
-                }
-            }
-        }
-
-    template <typename HamiltonianType>
-        void FSSH_Trajectory<HamiltonianType>::update_status() {
+        void FSSH_Trajectory<HamiltonianType>::update_status(double dt) {
             /**
              * update status of the trajectory current configuration
              */
-            m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
-            cal_Tmat();
+            if (dt <= 0.0) {
+                // dt <= 0.0 indicates this is the first step, calculate T = v \dot dc
+                m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
+                m_Tmat.assign(m_edim * m_edim, matrixop::ZEROZ);
+                for (int j(0); j < m_edim; ++j) {
+                    for (int k(0); k <= j; ++k) {
+                        for (int i(0); i < m_ndim; ++i) {
+                            m_Tmat.at(j+k*m_edim) += m_v.at(i) * m_dc.at(i).at(j+k*m_edim);
+                        }
+                        if (j != k) {
+                            m_Tmat.at(k+j*m_edim) = -conj(m_Tmat.at(j+k*m_edim));
+                        }
+                    }
+                }
+            }
+            else {
+                // dt > 0.0, calculate T = log[U(dt)] / dt, U_jk(dt) = <psi_j(t0) | psi_k(t0 + dt)>
+                misc::confirm<misc::StateError> (not m_evt.empty(), "update_status: dt > 0.0 while m_evt is empty!");
+                auto lastevt = m_evt;
+                m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
+                m_Tmat = zeyu::cal_Tmat(lastevt, m_evt, m_edim, dt);
+            }
         }
 
     
@@ -217,7 +225,7 @@ namespace mqc {
             // 1st conf update
             m_v += 0.5 * dt / m_mass * tot_force;
             m_r += dt * m_v;
-            update_status();
+            update_status(dt);
             // 2nd force update 
             tot_force = cal_berry_force(); // berry force
             for (int i(0); i < m_ndim; ++i) {
@@ -229,7 +237,7 @@ namespace mqc {
             }
             // 2nd conf update
             m_v += 0.5 * dt / m_mass * tot_force;
-            update_status();
+            update_status(dt);
         }
             
     template <typename HamiltonianType>
@@ -299,6 +307,7 @@ namespace mqc {
                 else {
                     // hop frustrated
                     m_Nhop_frustrated += 1;
+                    // MOMENTUM REVERSAL ?
                 }
             }
         }
@@ -328,7 +337,7 @@ namespace mqc {
             set_Nhop_accepted(0);
             set_Nhop_frustrated(0);
             // update status
-            update_status();
+            update_status(0.0);
             m_initialized = true;
         }
 
@@ -350,69 +359,63 @@ namespace mqc {
              * propagate trajectory forward by dt
              */
             misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
-            // nuclear part
+
+            // --- nuclear part --- //
+
+            auto lasteva = m_eva;
             nuclear_integrator(dt);
-            // electronic part
-            if (not m_enable_hop) {
-                // hop disabled
-                electronic_integrator(dt);
+
+            // --- electronic part --- //
+
+            // determine dtq and Ndq
+            double max_abs_T = 0.0;
+            for (auto& Tx : m_Tmat) {
+                max_abs_T = std::max(std::abs(Tx), max_abs_T);
+            } 
+            double max_abs_dE = 0.0;
+            auto diffE = m_eva - mean(m_eva);
+            for (auto& diffEx : diffE) {
+                max_abs_dE = std::max(std::abs(diffEx), max_abs_dE);
             }
-            else {
-                // hop enabled, make sure dt is not too large
-                double dtq = dt;
+            double dtq = std::min(dt, std::min(0.02 / max_abs_T, 0.02 / max_abs_dE));
+            int Ndtq = std::round(dt / dtq);
+            dtq = dt / Ndtq;
+
+            // propagate: assuming const Tmat, and m_eva can be linearly interpolated
+            auto deva = (m_eva - lasteva) / Ndtq;
+            m_eva.swap(lasteva);
+            for (int idtq(0); idtq < Ndtq; ++idtq) {
+                electronic_integrator(dtq);
+                if (m_enable_hop) {
+                    hopper(dtq);
+                } 
+                m_eva += deva;
+            }
+            m_eva.swap(lasteva);
+
+            /*
+            for (int idtq(0); idtq < Ndtq; ++idtq) {
+                // propagate dtq forward
+                double cur_dtq = dtq;
                 double accu_dtq = 0.0;
-                while (accu_dtq < dt) {
-                    if (dt - accu_dtq < dtq) {
-                        dtq = dt - accu_dtq;
+                while (accu_dtq < dtq) {
+                    if (dtq - accu_dtq < cur_dtq) {
+                        cur_dtq = dtq - accu_dtq;
                     }
                     try {
-                        hopper(dtq);
+                        hopper(cur_dtq);
                     } catch (const misc::ValueError& e) {
-                        // catch exception: need to reduce dtq
-                        dtq *= 0.5;
+                        // catch exception: need to reduce cur_dtq
+                        cur_dtq *= 0.5;
                         continue;
                     }
-                    electronic_integrator(dtq);
-                    accu_dtq += dtq;
+                    electronic_integrator(cur_dtq);
+                    accu_dtq += cur_dtq;
                 }
-                /*
-                double max_abs_T = 0.0;
-                for (auto& Tx : m_Tmat) {
-                    max_abs_T = std::max(std::abs(Tx), max_abs_T);
-                } 
-                double dtq = std::min(dt, 0.02 / max_abs_T);
-                int Ndtq = std::round(dt / dtq);
-                dtq = dt / Ndtq;
-                for (int idtq(0); idtq < Ndtq; ++idtq) {
-                    // propagate dtq forward
-                    double cur_dtq = dtq;
-                    double accu_dtq = 0.0;
-                    while (accu_dtq < dtq) {
-                        if (dtq - accu_dtq < cur_dtq) {
-                            cur_dtq = dtq - accu_dtq;
-                        }
-                        try {
-                            hopper(cur_dtq);
-                        } catch (const misc::ValueError& e) {
-                            // catch exception: need to reduce cur_dtq
-                            cur_dtq *= 0.5;
-                            continue;
-                        }
-                        electronic_integrator(cur_dtq);
-                        accu_dtq += cur_dtq;
-                    }
-                }
-                */
-                /*
-                for (int idtq(0); idtq < Ndtq; ++idtq) {
-                    if (m_enable_hop) {
-                        hopper(dtq);
-                    } 
-                    electronic_integrator(dtq);
-                }
-                */
             }
-            // time part
+            */
+
+            // --- time part --- //
             m_t += dt;
         }
 
@@ -422,13 +425,27 @@ namespace mqc {
 
     template <typename HamiltonianType>
         double FSSH_Trajectory<HamiltonianType>::cal_KE() const {
+            /**
+             * calculate kinetic energy
+             */
             return 0.5 * m_mass * sum(m_v * m_v);
         }
 
     template <typename HamiltonianType>
         double FSSH_Trajectory<HamiltonianType>::cal_PE() const {
+            /**
+             * calculate potential energy 
+             */
             misc::confirm<misc::StateError>(not m_eva.empty(), "cal_PE: eigenvalues not yet calculated.");
             return m_eva.at(m_s);
+        }
+
+    template <typename HamiltonianType>
+        double FSSH_Trajectory<HamiltonianType>::cal_totE() const {
+            /**
+             * calculate total energy 
+             */
+            return cal_KE() + cal_PE();
         }
 
     template <typename HamiltonianType>
