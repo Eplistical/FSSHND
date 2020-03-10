@@ -191,7 +191,7 @@ namespace mqc {
     template <typename HamiltonianType>
         void FSSH_Trajectory<HamiltonianType>::electronic_integrator(double dt) {
             /**
-             * electronic integrator  -- RK4
+             * electronic integrator -- RK4
              */
             std::vector<std::complex<double>> rk4_mat = -m_Tmat;
             for (int j(0); j < m_edim; ++j) {
@@ -392,7 +392,6 @@ namespace mqc {
                 m_eva += deva;
             }
             m_eva.swap(lasteva);
-
             /*
             for (int idtq(0); idtq < Ndtq; ++idtq) {
                 // propagate dtq forward
@@ -412,7 +411,6 @@ namespace mqc {
                     electronic_integrator(cur_dtq);
                     accu_dtq += cur_dtq;
                 }
-            }
             */
 
             // --- time part --- //
