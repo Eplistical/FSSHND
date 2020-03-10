@@ -4,6 +4,11 @@
 #include "matrixop_config.hpp"
 #include "matmat.hpp"
 #include "eig.hpp"
+#include "mpower.hpp"
+#include "logm.hpp"
+
+#include "lowdin.hpp"
+#include "determinant.hpp"
 
 /*
 #include "nrm.hpp"
@@ -17,12 +22,8 @@
 #include "adjoint.hpp"
 #include "trace.hpp"
 
-#include "lowdin.hpp"
 #include "inverse.hpp"
-#include "determinant.hpp"
 #include "solve.hpp"
-#include "mpower.hpp"
-#include "logm.hpp"
 
 #include "zeros.hpp"
 #include "eye.hpp"
