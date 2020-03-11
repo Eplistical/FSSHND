@@ -207,6 +207,7 @@ void run() {
 
     // --- setup --- //
 
+    logging(misc::fmtstring("# MPI size = %d", MPIer::size));
     logging("# setting up simulation...");
     setup_params();
     const int my_Ntraj = MPIer::assign_job(Ntraj).size();
