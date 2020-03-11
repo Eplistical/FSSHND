@@ -1,5 +1,6 @@
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include <iostream>
 #include <complex>
 #include "adjust_evt_phase.hpp"
@@ -464,6 +465,24 @@ namespace mqc {
         }
 
 
+        bool check_pt_is_good_enough(const std::vector<std::complex<double>>& U, int N) {
+            /**
+             * if abs(U_ii) > 1 - 2/N for any i, return true
+             * else return false
+             */
+            if (N <= 2)  {
+                return true;
+            }
+
+            const double threash = 1.0 - 2.0 / N;
+            for (int i(0); i < N; ++i) {
+                if (std::abs(U.at(i+i*N)) <= threash) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         std::vector<std::complex<double>> adjust_evt_phase(const std::vector<std::complex<double>>& curevt, std::vector<std::complex<double>>& nextevt, int NNN, double timestep) {
             /**
              * get the correct phases for next evt, and return correpsonding T matrix
@@ -475,6 +494,8 @@ namespace mqc {
             int ii, jj, numtc, maximumvalue_rowindex;
             double maximumvalue_column = 0.0;
             bool flagtrivialcrossing = false;
+
+            // --- parallel transport --- //
 
             ///////Give me two eigenvectors here!
             //UUU = <\psi(t_0)|\psi(t_0+dt_c)>
@@ -500,6 +521,9 @@ namespace mqc {
                 }
             }
             UUU = zmatmat(curevt, tempnextevt, NNN, "C", "N");
+
+            // --- make sure det(U) = 1 --- //
+
             std::vector<std::complex<double>> tempUUU(NNN * NNN, 0.0);
             std::complex<double> determinantofU = cdet(UUU); //////////I need a determinant function here
             if(abs(abs(determinantofU) - 1.0) > 0.0001){
@@ -512,53 +536,62 @@ namespace mqc {
                 tempnextevt[ii] = tempnextevt[ii] / determinantofU;
                 UUU[ii + 0 * NNN] = UUU[ii + 0 * NNN] / determinantofU;
             }
-            /* Minimize f(theta) = a cos(theta) + b sin(theta), find the two coefficients {a, b} as denoted {coscoef, sincoef} */
-            double coscoef, sincoef, theta, cos2coef, sin2coef;
-            double minimumvalue = functiontominimize(UUU);
-            double tempminvalue;
-            tempUUU = UUU;
-            while(1) {
 
-                for(int inumtc = 0; inumtc < NNN; inumtc++) {
-                    for(int jnumtc = inumtc + 1; jnumtc < NNN; jnumtc++) {
-                        coscoef = 0.0;
-                        sincoef = 0.0;
-                        cos2coef = 0.0;
-                        sin2coef = 0.0;
-                        for(ii = 0; ii < NNN; ii++) {
-                            coscoef += real(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] + tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
-                            sincoef += -imag(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] - tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
-                        }
-                        coscoef -= real(tempUUU[jnumtc + inumtc * NNN] * tempUUU[inumtc + jnumtc * NNN]) * 2 + real(tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)]) * 8.0 / 3.0 + real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]);
-                        sincoef -= 8.0 / 3.0 * imag(tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)]) + imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]);
-                        cos2coef = real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]) * 0.50;
-                        sin2coef = imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]) * 0.50;
-                        theta = rotation_angle(cos2coef, sin2coef, coscoef, sincoef);
-                        /*if(theta == 40.0) {
-                          matprint(UUU);
-                          matprint(tempUUU);
+            // --- second order approximation --- //
 
-                          abort();
-                          }*/
+            // CHECK: if abs(Ujj) > 1 - 2/N for all j, parallel transport is good enough
+            if (not check_pt_is_good_enough(UUU, NNN)) {
+                // parallel transport is not good enough
+                /* Minimize f(theta) = a cos(theta) + b sin(theta), find the two coefficients {a, b} as denoted {coscoef, sincoef} */
+                double coscoef, sincoef, theta, cos2coef, sin2coef;
+                double minimumvalue = functiontominimize(UUU);
+                double tempminvalue;
+                tempUUU = UUU;
+                while(1) {
 
-                        for(ii = 0; ii < NNN; ii++) {
-                            tempUUU[ii + inumtc * NNN] = exp(complexnumberi * theta) * tempUUU[ii + inumtc * NNN];
-                            tempUUU[ii + jnumtc * NNN] = exp(-complexnumberi * theta) * tempUUU[ii + jnumtc * NNN];
-                            tempnextevt[ii + inumtc * NNN] = exp(complexnumberi * theta) * tempnextevt[ii + inumtc * NNN];
-                            tempnextevt[ii + jnumtc * NNN] = exp(-complexnumberi * theta) * tempnextevt[ii + jnumtc * NNN];
+                    for(int inumtc = 0; inumtc < NNN; inumtc++) {
+                        for(int jnumtc = inumtc + 1; jnumtc < NNN; jnumtc++) {
+                            coscoef = 0.0;
+                            sincoef = 0.0;
+                            cos2coef = 0.0;
+                            sin2coef = 0.0;
+                            for(ii = 0; ii < NNN; ii++) {
+                                coscoef += real(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] + tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
+                                sincoef += -imag(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] - tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
+                            }
+                            coscoef -= real(tempUUU[jnumtc + inumtc * NNN] * tempUUU[inumtc + jnumtc * NNN]) * 2 + real(tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)]) * 8.0 / 3.0 + real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]);
+                            sincoef -= 8.0 / 3.0 * imag(tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)]) + imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]);
+                            cos2coef = real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]) * 0.50;
+                            sin2coef = imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]) * 0.50;
+                            theta = rotation_angle(cos2coef, sin2coef, coscoef, sincoef);
+                            /*if(theta == 40.0) {
+                            matprint(UUU);
+                            matprint(tempUUU);
+
+                            abort();
+                            }*/
+
+                            for(ii = 0; ii < NNN; ii++) {
+                                tempUUU[ii + inumtc * NNN] = exp(complexnumberi * theta) * tempUUU[ii + inumtc * NNN];
+                                tempUUU[ii + jnumtc * NNN] = exp(-complexnumberi * theta) * tempUUU[ii + jnumtc * NNN];
+                                tempnextevt[ii + inumtc * NNN] = exp(complexnumberi * theta) * tempnextevt[ii + inumtc * NNN];
+                                tempnextevt[ii + jnumtc * NNN] = exp(-complexnumberi * theta) * tempnextevt[ii + jnumtc * NNN];
+                            }
                         }
                     }
-                }
-                tempminvalue = functiontominimize(tempUUU);
-                //std::cout << "MIN: "<< minimumvalue << " -> " << tempminvalue << std::endl;
-                if(abs(minimumvalue - tempminvalue) < 0.00001){
-                    break;
-                }
-                else{
-                    minimumvalue = tempminvalue;
-                }
-            }	
-            //Save eigenvectors at t_0+dt_c with correct signs
+                    tempminvalue = functiontominimize(tempUUU);
+                    //std::cout << "MIN: "<< minimumvalue << " -> " << tempminvalue << std::endl;
+                    if(abs(minimumvalue - tempminvalue) < 0.00001){
+                        break;
+                    }
+                    else{
+                        minimumvalue = tempminvalue;
+                    }
+                }	
+            }
+
+            // --- generate results and calculate Tmat if needed --- //
+
             nextevt = tempnextevt;
 
             if (timestep > 0.0) {
