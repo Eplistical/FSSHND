@@ -416,7 +416,7 @@ int main(int argc, char** argv) {
         run();
     } catch(const std::exception& e) { 
         // exception caught
-        ioer::info("# Thread ", MPIer::rank, " / ", MPIer::rank, ": Exception caught: ", e.what());
+        ioer::info("# Thread ", MPIer::rank, " / ", MPIer::size, ": Exception caught: ", e.what());
         ioer::info("# ", timer::toc());
         MPIer::abort();
     }
