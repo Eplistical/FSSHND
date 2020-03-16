@@ -10,7 +10,7 @@ LIBS += -L$(ROOTDIR)/misc -Wl,--rpath=$(ROOTDIR)/misc -lmisc
 LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran 
 
 
-all : tully1 tully1_2d multistate nuscatter
+all : tully1 tully1_2d multistate conner nuscatter 
 
 tully1 : hamiltonian.o adjust_evt_phase.o tully1_hamiltonian.o tully1.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
@@ -19,6 +19,9 @@ tully1_2d : hamiltonian.o adjust_evt_phase.o tully1_2d_hamiltonian.o tully1_2d.c
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 multistate : hamiltonian.o adjust_evt_phase.o multistate_hamiltonian.o multistate.cpp
+	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
+
+conner : hamiltonian.o adjust_evt_phase.o conner_hamiltonian.o conner.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 nuscatter : hamiltonian.o adjust_evt_phase.o nuscatter_hamiltonian.o nuscatter.cpp
@@ -37,6 +40,9 @@ tully1_2d_hamiltonian.o : tully1_2d_hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 
 
 multistate_hamiltonian.o : multistate_hamiltonian.cpp
+	$(CXX) $(OPT) -o $@ -c $^ 
+
+conner_hamiltonian.o : conner_hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 
 
 nuscatter_hamiltonian.o : nuscatter_hamiltonian.cpp

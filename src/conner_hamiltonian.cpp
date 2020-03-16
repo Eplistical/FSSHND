@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include <numeric>
 #include <vector>
 #include <cmath>
@@ -59,21 +60,21 @@ namespace mqc {
         return nabla_phi;
     }
 
-    double trap(double x, const std::pair<double, double>& lxrx) const {
+    double Conner_Hamiltonian::trap(double x, const std::pair<double, double>& lxrx) const {
         /**
          * trap function with tanh boundaries [lx, rx].
          */
         return std::tanh(x-lxrx.second) - std::tanh(x-lxrx.first);
     }
 
-    double der_trap(double x, const std::pair<double, double>& lxrx) const {
+    double Conner_Hamiltonian::der_trap(double x, const std::pair<double, double>& lxrx) const {
         /**
          * dertivate of the trap function to x
          */
         return -std::pow(std::tanh(x-lxrx.second), 2) + std::pow(std::tanh(x-lxrx.first), 2);
     }
     
-    std::pair<double, double> get_boundaries(int k, int j) const {
+    std::pair<double, double> Conner_Hamiltonian::get_boundaries(int k, int j) const {
         /**
          * get boundaries (lx, rx) for the j^th term in H_{kk}
          */
@@ -82,20 +83,20 @@ namespace mqc {
         const double R = m_params.at("R");
         if (j == k) {
             if (k == 0) {
-                return std::make_pair(-R-A, R);
+                return std::make_pair(-R - A, R);
             }
             else if (k == m_dim - 1) {
-                return std::make_pair(-R, R+A);
+                return std::make_pair(-R, R + A);
             }
             else {
                 return std::make_pair(-R, R);
             }
         }
         else if (j < k) {
-            return std::make_pair(R-B, R+B);
+            return std::make_pair(R - B, R + B);
         }
         else {
-            return std::make_pair(-R-B, -R+B);
+            return std::make_pair(-R - B, -R + B);
         }
     }
 
@@ -111,9 +112,9 @@ namespace mqc {
         // check
         misc::confirm<misc::ValueError>(m_dim == r.size(), "cal_H: the size of r must equal to the dim of Hamiltonian.");
         // diagonal terms
-        vector<double> aux_smallj(m_dim, 0.0);
-        vector<double> aux_largej(m_dim, 0.0);
-        vector<double> aux_equalj(m_dim, 0.0);
+        std::vector<double> aux_smallj(m_dim, 0.0);
+        std::vector<double> aux_largej(m_dim, 0.0);
+        std::vector<double> aux_equalj(m_dim, 0.0);
         for (int j(0); j < m_dim; ++j) {
             aux_smallj.at(j) = trap(r.at(j), get_boundaries(m_dim, j));
             aux_largej.at(j) = trap(r.at(j), get_boundaries(-1, j));
@@ -148,9 +149,9 @@ namespace mqc {
         // check
         misc::confirm<misc::ValueError>(m_dim == r.size(), "cal_H: the size of r must equal to the dim of Hamiltonian.");
         // diagonal terms
-        vector<double> aux_der_smallj(m_dim, 0.0);
-        vector<double> aux_der_largej(m_dim, 0.0);
-        vector<double> aux_der_equalj(m_dim, 0.0);
+        std::vector<double> aux_der_smallj(m_dim, 0.0);
+        std::vector<double> aux_der_largej(m_dim, 0.0);
+        std::vector<double> aux_der_equalj(m_dim, 0.0);
         for (int j(0); j < m_dim; ++j) {
             aux_der_smallj.at(j) = der_trap(r.at(j), get_boundaries(m_dim, j));
             aux_der_largej.at(j) = der_trap(r.at(j), get_boundaries(-1, j));

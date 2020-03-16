@@ -51,7 +51,6 @@ void setup_params() {
     // check
     misc::confirm<misc::ValueError>(Nsite > 1, "Nsite must > 1.");
     misc::confirm<misc::ValueError>(kT > 0.0, "kT must > 0.");
-    misc::confirm<misc::ValueError>(fric_gamma >= 0.0, "fric_gamma must >= 0.");
     misc::confirm<misc::ValueError>(init_s >= 0, "init_s must >= 0");
     misc::confirm<misc::ValueError>(dt > 0.0, "dt must > 0.");
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
@@ -67,6 +66,10 @@ void setup_params() {
     misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
     sigma_r.assign(ndim, 0.5);
     sigma_p.assign(ndim, 1.0);
+    /*
+    sigma_r.assign(ndim, 0.0);
+    sigma_p.assign(ndim, 0.0);
+    */
     misc::confirm<misc::ValueError>(init_r.size() == Nsite and init_r.size() == init_p.size()  and init_r.size() == sigma_r.size() and init_p.size() == sigma_p.size(), 
                                     "argparse: init_r, init_p, sigma_r, sigma_p must have the same sizes (which should be Nsite).");
 }
@@ -143,10 +146,9 @@ bool check_end(const trajectory_t& traj) {
     /**
      * determine if a trajectory reaches the end of its simulation
      */
-    auto r = traj.get_r();
-    auto v = traj.get_v();
-    if (r.at(0) < -10.0 and v.at(0) < 0.0) return true;
-    if (r.at(ndim - 1) < -10.0 and v.at(n_dim - 1) < 0.0) return true;
+    const auto r = traj.get_r();
+    if (r.at(0) < -hami->get_param("R") - 0.5 * hami->get_param("A")) return true;
+    if (r.at(ndim-1) > hami->get_param("R") + 0.5 * hami->get_param("A")) return true;
     return false;
 }
 
@@ -163,6 +165,7 @@ void run() {
     setup_params();
     const int my_Ntraj = MPIer::assign_job(Ntraj).size();
     recorder_t recorder;
+
 
     // --- simulation --- //
 
@@ -182,7 +185,6 @@ void run() {
                 break;
             }
         }
-
         // propagation
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
@@ -268,6 +270,8 @@ void run() {
                     " seed = ", seed,
                     "");
         ioer::tabout("#", "t", 
+                "npos",
+                "nneg",
                 "r", vector<string>(ndim - 1, ""),
                 "p", vector<string>(ndim - 1, ""),
                 "s", 
@@ -288,10 +292,18 @@ void run() {
             // statistics
             vector<double> r, p;
             vector<double> nd(edim, 0.0);
+            double npos = 0.0, nneg = 0.0;
             double s = 0.0;
             double KE = 0.0, PE = 0.0;
             for (int itraj(0); itraj < Ntraj; ++itraj) {
                 s += sarr.at(itraj);
+                if (rarr.at(edim-1+itraj*ndim) > hami->get_param("R") + 0.5 * hami->get_param("A")) {
+                    npos += 1.0;
+                }
+                else if (rarr.at(0+itraj*ndim) < hami->get_param("R") - 0.5 * hami->get_param("A")) {
+                    nneg += 1.0;
+                }
+
                 if (itraj == 0) {
                     r = vector<double>(rarr.begin() + itraj * ndim, rarr.begin() + (itraj + 1) * ndim);
                     p = mass * vector<double>(varr.begin() + itraj * ndim, varr.begin() + (itraj + 1) * ndim);
@@ -309,15 +321,17 @@ void run() {
             r /= Ntraj;
             p /= Ntraj;
             s /= Ntraj;
+            npos /= Ntraj;
+            nneg /= Ntraj;
             KE /= Ntraj;
             PE /= Ntraj;
 
             nd /= Ntraj;
 
-            ioer::tabout("#", t, r, p, s, nd, KE, PE, KE + PE);
+            ioer::tabout("#", t, npos, nneg, r, p, s, nd, KE, PE, KE + PE);
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(r, p, s, nd, KE, PE, KE + PE);
+                ioer::tabout(npos, nneg, r, p, s, nd, KE, PE, KE + PE);
             }
         }
     }
@@ -330,13 +344,13 @@ void runtest() {
      * run test
      */
 
-    // --- setup --- //
+    // --- DEBUG --- //
+
 
     logging("# setting up simulation...");
     setup_params();
     const int my_Ntraj = MPIer::assign_job(Ntraj).size();
     recorder_t recorder;
-
 
     if (MPIer::master) {
         // header output
@@ -361,37 +375,22 @@ void runtest() {
     }
 
     // hamiltonian
-    vector<double> r = init_r;
-    ioer::info("# r = ", r);
-    ioer::info("# H(r) = ", hami->cal_H(r));
-    auto nablaH = hami->cal_nablaH(r);
-    ioer::info("# nablaH(r):");
-    int i = 0;
-    for (auto Hx : nablaH) {
-        ioer::info("# ", i, " : ");
-        ioer::info("# ", Hx);
-        i += 1;
-    }
-
+    ioer::info("# hamiltonian: ");
     vector<complex<double>> init_c(edim, matrixop::ZEROZ);
     init_c.at(init_s) = matrixop::ONEZ;
     vector<double> init_v(ndim, 0.0);
     trajectory_t traj(*hami);
-    double x = -8.0;
-    while (x < 8.0) {
-        double y = -8.0;
-        while (y < 8.0) {
+    for (double x(-20.0); x < 20.0; x += 0.1) {
+        for (double y(-20.0); y < 20.0; y += 0.1) {
             vector<double> r{x, y};
             traj.setup(mass, r, init_v, init_c, init_s);
             auto H = hami->cal_H(r);
             auto eva = traj.get_eva();
             ioer::tabout(r, H.at(0+0*Nsite).real(), H.at(1+1*Nsite).real(), eva.at(0), eva.at(1));
-            y += 0.1;
         }
-        x += 0.1;
     }
 
-
+    // init dist
     ioer::info("# initial dist:");
     auto swarm = gen_swarm(Ntraj);
     for (auto& traj : swarm) {
@@ -412,7 +411,8 @@ int main(int argc, char** argv) {
     randomer::seed(MPIer::assign_random_seed(seed));
     timer::tic();
     try { 
-        run();
+        //run();
+        runtest();
     } catch(const std::exception& e) { 
         // exception caught
         ioer::info("# Thread ", MPIer::rank, " / ", MPIer::size, ": Exception caught: ", e.what());

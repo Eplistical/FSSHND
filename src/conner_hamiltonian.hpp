@@ -6,6 +6,7 @@
  */
 
 #include <vector>
+#include <utility>
 #include <complex>
 #include "hamiltonian.hpp"
 
@@ -22,7 +23,9 @@ namespace mqc {
             // --- utils --- //
             double cal_phi(const std::vector<double>& /* r */, int /* k */) const;
             std::vector<double> cal_nabla_phi(const std::vector<double>& /* r */, int /* k */) const;
-            double trap(double x, double lx, double rx) const;
+            double trap(double /* x */, const std::pair<double, double>& /* lxrx */) const;
+            double der_trap(double /* x */, const std::pair<double, double>& /* lxrx */) const;
+            std::pair<double, double> get_boundaries(int /* k */, int /* j */) const;
         public:
             // --- interfaces --- //
             virtual std::vector<std::complex<double>> cal_H(const std::vector<double>& /* r */) const override;

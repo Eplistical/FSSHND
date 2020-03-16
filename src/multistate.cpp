@@ -51,7 +51,6 @@ void setup_params() {
     // check
     misc::confirm<misc::ValueError>(Nsite > 1, "Nsite must > 1.");
     misc::confirm<misc::ValueError>(kT > 0.0, "kT must > 0.");
-    misc::confirm<misc::ValueError>(fric_gamma >= 0.0, "fric_gamma must >= 0.");
     misc::confirm<misc::ValueError>(init_s >= 0, "init_s must >= 0");
     misc::confirm<misc::ValueError>(dt > 0.0, "dt must > 0.");
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");

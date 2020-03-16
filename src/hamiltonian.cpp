@@ -71,8 +71,9 @@ namespace mqc {
             std::vector<std::complex<double>> evt;
             matrixop::hdiag(cal_H(r), eva, evt);
             if (not lastevt.empty()) {
-                zeyu::adjust_evt_phase(lastevt, evt, m_dim, 0.0);
                 /*
+                zeyu::adjust_evt_phase(lastevt, evt, m_dim, 0.0);
+                */
                 auto tmp = matrixop::matCmat(lastevt, evt, m_dim);
                 for (int j = 0; j < m_dim; ++j) {
                     std::complex<double> eip = tmp.at(j+j*m_dim) / abs(tmp.at(j+j*m_dim));
@@ -80,7 +81,6 @@ namespace mqc {
                         evt.at(k+j*m_dim) /= eip;
                     }
                 }
-                */
             }
             // calculate force & dc
             const int ndim = r.size();
@@ -124,8 +124,9 @@ namespace mqc {
             std::vector<std::complex<double>> evt;
             matrixop::hdiag(cal_H(r), eva, evt);
             if (not lastevt.empty()) {
-                Tmat = zeyu::adjust_evt_phase(lastevt, evt, m_dim, dt);
                 /*
+                Tmat = zeyu::adjust_evt_phase(lastevt, evt, m_dim, dt);
+                */
                 auto tmp = matrixop::matCmat(lastevt, evt, m_dim);
                 for (int j = 0; j < m_dim; ++j) {
                     std::complex<double> eip = tmp.at(j+j*m_dim) / abs(tmp.at(j+j*m_dim));
@@ -135,7 +136,6 @@ namespace mqc {
                 }
                 auto U = matrixop::matCmat(lastevt, evt, m_dim);
                 Tmat = matrixop::logmh(U) / dt;
-                */
             }
             // calculate force & dc
             const int ndim = r.size();
