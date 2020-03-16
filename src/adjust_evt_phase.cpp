@@ -54,7 +54,7 @@ namespace mqc {
              * */
             double a = 2.0 * BB, b = - 2.0 * AA, c = DD, d = -CC;
             double x4 = 4.0 * (a * a + b * b);
-            if(abs(x4) < 0.000000001) {
+            if(std::abs(x4) < 0.000000001) {
                 double theta = atan(-c / d);
                 if(c * sin(theta) - d * cos(theta) < 0.0) {
                     return theta;
@@ -105,16 +105,16 @@ namespace mqc {
             bool flagfirstroot = true;
             int i;
             for(i=0; i < 4; i++) {
-                if(abs(imag(A[i * 5])) > 0.00001) {
+                if(std::abs(std::imag(A[i * 5])) > 0.00001) {
                     continue;
                 }
                 else {
-                    if(real(A[i * 5]) > 1.0000010 || real(A[i * 5]) < -1.000000100) {
+                    if(std::real(A[i * 5]) > 1.0000010 || std::real(A[i * 5]) < -1.000000100) {
                         continue;
                     }
-                    attemptroot = acos(std::max(std::min(real(A[i * 5]), 1.0), -1.0));
+                    attemptroot = acos(std::max(std::min(std::real(A[i * 5]), 1.0), -1.0));
                     func = a * cos(2.0 * attemptroot) + b * sin(2.0 * attemptroot) + c * cos(attemptroot) + d * sin(attemptroot);
-                    if(abs(func) < 0.001) {
+                    if(std::abs(func) < 0.001) {
                         if(flagfirstroot == true) {
                             mintheta = attemptroot;
                             minval = AA * cos(2.0 * attemptroot) + BB * sin(2.0 * attemptroot) + CC * cos(attemptroot) + DD * sin(attemptroot);
@@ -131,7 +131,7 @@ namespace mqc {
                     else {
                         attemptroot *= -1.0;
                         func = a * cos(2.0 * attemptroot) + b * sin(2.0 * attemptroot) + c * cos(attemptroot) + d * sin(attemptroot);
-                        if(abs(func) < 0.000001) {
+                        if(std::abs(func) < 0.001) {
                             if(flagfirstroot == true) {
                                 mintheta = attemptroot;
                                 minval = AA * cos(2.0 * attemptroot) + BB * sin(2.0 * attemptroot) + CC * cos(attemptroot) + DD * sin(attemptroot);
@@ -148,8 +148,15 @@ namespace mqc {
                         else {
                             std::cout << "There is a problem!" << std::endl;
                             std::cout << a << " " << b << " " << c << " " << d << std::endl;
+                            std::cout 
+                                << "\t" << "i = " << i 
+                                << "\t" << "A[i * 5] = " << A[i * 5] 
+                                << "\t" << "std::imag(A[i * 5]) = " << std::imag(A[i * 5]) 
+                                << "\t" << "std::abs(std::imag(A[i * 5])) = " << std::abs(std::imag(A[i * 5])) 
+                                << "\t" << "std::real(A[i * 5]) = " << std::real(A[i * 5]) 
+                                << std::endl;
                             matprint(A);
-                            std::cout << "Ai" << real(A[0]) + 1.0 << "\nAttempt root" << attemptroot << "\nFunc:" << func<< std::endl;
+                            std::cout << "Ai" << std::real(A[0]) + 1.0 << "\nAttempt root" << attemptroot << "\nFunc:" << func<< std::endl;
                             break;
                         }
                     }
@@ -163,7 +170,7 @@ namespace mqc {
                 flagfirstroot = true;
                 std::cout << a << " " << b << " " << c << " " << d << std::endl;
                 std::cout.precision(9);
-                std::cout << "Ai" << real(A[0]) + 1.000000000 << A[i * 5]<< "\nAttempt root" << attemptroot << "\nFunc:" << func<< std::endl;
+                std::cout << "Ai" << std::real(A[0]) + 1.000000000 << A[i * 5]<< "\nAttempt root" << attemptroot << "\nFunc:" << func<< std::endl;
                 matprint(A);
                 abort();
 
@@ -177,9 +184,9 @@ namespace mqc {
             double functional = 0.0;
             for(int ii = 0; ii < N; ii++) {
                 for(int jj = 0; jj < N; jj++) {
-                    functional += real(Mat[ii + jj * N] * Mat[jj + ii * N]);
+                    functional += std::real(Mat[ii + jj * N] * Mat[jj + ii * N]);
                 }
-                functional += - 16.0 / 3.0 * real(Mat[ii * (N + 1)]);
+                functional += - 16.0 / 3.0 * std::real(Mat[ii * (N + 1)]);
             }
             return functional;
         }
@@ -363,7 +370,7 @@ namespace mqc {
             zheevd("V", "L", &N, &evt_[0], &N, &eva[0],
                         &work[0], &lwork, &rwork[0], &lrwork, &iwork[0], &liwork, &info);
 
-            lwork = (int)real(work[0]);
+            lwork = (int)std::real(work[0]);
             lrwork = (int)rwork[0];
             liwork = iwork[0];
             work.resize(lwork);
@@ -445,7 +452,7 @@ namespace mqc {
             //Check if A is pure real?
             bool flagimag = false;
             for (int i(0); i < N; ++i) {
-                if (abs(std::imag(A[i + i * N])) > 3.14){
+                if (std::abs(std::imag(A[i + i * N])) > 3.14){
                     flagimag = true;
                     //std::cout <<"matrixop::mlog: Dropping useful value in imaginary part!\n" << "i: " << i << "\nj: "<< j << "\nelement: " <<  A[i + j * N] << std::endl;
                 }
@@ -467,9 +474,10 @@ namespace mqc {
 
         bool check_pt_is_good_enough(const std::vector<std::complex<double>>& U, int N) {
             /**
-             * if abs(U_ii) > 1 - 2/N for any i, return true
+             * if std::abs(U_ii) > 1 - 2/N for any i, return true
              * else return false
              */
+           // return true;
             if (N <= 2)  {
                 return true;
             }
@@ -501,9 +509,9 @@ namespace mqc {
             //UUU = <\psi(t_0)|\psi(t_0+dt_c)>
             UUU = zmatmat(curevt, nextevt, NNN, "C", "N");
             numtc = 0;
-            //absUUU = abs(UUU)
+            //absUUU = std::abs(UUU)
             for(ii = 0; ii < NNN * NNN; ii++) {
-                absUUU[ii] = abs(UUU[ii]);
+                absUUU[ii] = std::abs(UUU[ii]);
             }
             //Make sure Max(UUU(jj, iii)) element of column ii REAL and positive by changing the phase [exp(i\theta)] of eigenvectors at t_0 + dt_c
             for(ii = 0; ii < NNN; ii++) {
@@ -526,8 +534,8 @@ namespace mqc {
 
             std::vector<std::complex<double>> tempUUU(NNN * NNN, 0.0);
             std::complex<double> determinantofU = cdet(UUU); //////////I need a determinant function here
-            if(abs(abs(determinantofU) - 1.0) > 0.0001){
-                std::cout << "U is not unitary?!\ndet(U) = " << abs(determinantofU)<< std::endl;
+            if(std::abs(std::abs(determinantofU) - 1.0) > 0.0001){
+                std::cout << "U is not unitary?!\ndet(U) = " << std::abs(determinantofU)<< std::endl;
                 //matprint(UUU);
                 abort();
             }
@@ -539,7 +547,7 @@ namespace mqc {
 
             // --- second order approximation --- //
 
-            // CHECK: if abs(Ujj) > 1 - 2/N for all j, parallel transport is good enough
+            // CHECK: if std::abs(Ujj) > 1 - 2/N for all j, parallel transport is good enough
             if (not check_pt_is_good_enough(UUU, NNN)) {
                 // parallel transport is not good enough
                 /* Minimize f(theta) = a cos(theta) + b sin(theta), find the two coefficients {a, b} as denoted {coscoef, sincoef} */
@@ -556,13 +564,13 @@ namespace mqc {
                             cos2coef = 0.0;
                             sin2coef = 0.0;
                             for(ii = 0; ii < NNN; ii++) {
-                                coscoef += real(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] + tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
-                                sincoef += -imag(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] - tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
+                                coscoef += std::real(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] + tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
+                                sincoef += -std::imag(tempUUU[ii + inumtc * NNN] * tempUUU[ii * NNN + inumtc] - tempUUU[ii + jnumtc * NNN] * tempUUU[ii * NNN + jnumtc]);
                             }
-                            coscoef -= real(tempUUU[jnumtc + inumtc * NNN] * tempUUU[inumtc + jnumtc * NNN]) * 2 + real(tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)]) * 8.0 / 3.0 + real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]);
-                            sincoef -= 8.0 / 3.0 * imag(tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)]) + imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]);
-                            cos2coef = real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]) * 0.50;
-                            sin2coef = imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]) * 0.50;
+                            coscoef -= std::real(tempUUU[jnumtc + inumtc * NNN] * tempUUU[inumtc + jnumtc * NNN]) * 2 + std::real(tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)]) * 8.0 / 3.0 + std::real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]);
+                            sincoef -= 8.0 / 3.0 * std::imag(tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)]) + std::imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]);
+                            cos2coef = std::real(tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)] + tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)]) * 0.50;
+                            sin2coef = std::imag(tempUUU[jnumtc * (NNN + 1)] * tempUUU[jnumtc * (NNN + 1)] - tempUUU[inumtc * (NNN + 1)] * tempUUU[inumtc * (NNN + 1)]) * 0.50;
                             theta = rotation_angle(cos2coef, sin2coef, coscoef, sincoef);
                             /*if(theta == 40.0) {
                             matprint(UUU);
@@ -581,7 +589,7 @@ namespace mqc {
                     }
                     tempminvalue = functiontominimize(tempUUU);
                     //std::cout << "MIN: "<< minimumvalue << " -> " << tempminvalue << std::endl;
-                    if(abs(minimumvalue - tempminvalue) < 0.00001){
+                    if(std::abs(minimumvalue - tempminvalue) < 0.00001){
                         break;
                     }
                     else{
