@@ -32,7 +32,7 @@ double kT = 0.1;
 double fric_gamma = 0.0;
 int init_s = 0;
 int Ntraj = 2000;
-int Nstep = 10000;
+int Nstep = 100000;
 int output_step = 100;
 double Etot = 0.04;
 double dt = 0.1;
@@ -321,6 +321,8 @@ void run() {
                 "r", vector<string>(ndim - 1, ""),
                 "p", vector<string>(ndim - 1, ""),
                 "s", 
+                "nT", vector<string>(edim - 1, ""),
+                "nR", vector<string>(edim - 1, ""),
                 "diab_pop", vector<string>(edim - 1, ""),
                 "KE",
                 "PE",
@@ -340,6 +342,8 @@ void run() {
             vector<double> nd(edim, 0.0);
             double s = 0.0;
             double KE = 0.0, PE = 0.0;
+            vector<double> nT(edim, 0.0);
+            vector<double> nR(edim, 0.0);
             for (int itraj(0); itraj < Ntraj; ++itraj) {
                 s += sarr.at(itraj);
                 if (itraj == 0) {
@@ -353,6 +357,15 @@ void run() {
                 KE += KEarr.at(itraj);
                 PE += PEarr.at(itraj);
 
+                if (varr.at(1 + itraj * ndim) > 0.0) {
+                    // nT
+                    nT.at(sarr.at(itraj)) += 1.0;
+                }
+                else {
+                    // nR
+                    nR.at(sarr.at(itraj)) += 1.0;
+                }
+
                 nd += vector<double> (ndarr.begin() + itraj * edim, ndarr.begin() + (itraj+1) * edim);
             }
 
@@ -362,12 +375,14 @@ void run() {
             KE /= Ntraj;
             PE /= Ntraj;
 
+            nT /= Ntraj;
+            nR /= Ntraj;
             nd /= Ntraj;
 
-            ioer::tabout("#", t, r, p, s, nd, KE, PE, KE + PE);
+            ioer::tabout("#", t, r, p, s, nT, nR, nd, KE, PE, KE + PE);
             // final output
             if (irec == Nrec - 1) {
-                ioer::tabout(r, p, s, nd, KE, PE, KE + PE);
+                ioer::tabout(r, p, s, nT, nR, nd, KE, PE, KE + PE);
             }
         }
     }

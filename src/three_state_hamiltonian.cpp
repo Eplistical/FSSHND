@@ -22,9 +22,9 @@ namespace mqc {
         "# H_00 = 0.5 * MASS * OMEGA_A^2 * x^2 + A * tanh(E * y) + A\n"
         "# H_11 = 0.5 * MASS * OMEGA_A^2 * x^2 - A * tanh(E * y) + A\n"
         "# H_22 = 0.5 * MASS * OMEGA_B^2 * x^2 - A * tanh(E * y) + B\n"
-        "# H_01 = C * exp(-E^2 * y^2) * (0.5 + 0.1i)\n"
-        "# H_02 = C * exp(-E^2 * y^2) * (0.1 + 0.5i)\n"
-        "# H_12 = C * exp(-E^2 * y^2) * (0.1 + 0.1i)\n"
+        "# H_01 = C * exp(-E^2 * y^2) * V01\n"
+        "# H_02 = C * exp(-E^2 * y^2) * V02\n"
+        "# H_12 = C * exp(-E^2 * y^2) * V12\n"
         "# H_10 = conj(H_01)\n"
         "# H_20 = conj(H_02)\n"
         "# H_21 = conj(H_12)\n"
@@ -41,12 +41,12 @@ namespace mqc {
         m_params["OMEGA_B"] = 0.02;
 
         // constants
-        m_params["V01R"] = 0.5;
         m_params["V01I"] = 0.1;
-        m_params["V02R"] = 0.1;
+        m_params["V01R"] = 0.5;
         m_params["V02I"] = 0.5;
-        m_params["V12R"] = 0.1;
+        m_params["V02R"] = 0.1;
         m_params["V12I"] = 0.1;
+        m_params["V12R"] = 0.1;
     }
 
 
