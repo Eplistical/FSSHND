@@ -42,9 +42,15 @@ namespace mqc {
 
 
     double Conner_Hamiltonian::cal_phi(const std::vector<double>& r, int k) const {
-        //return m_params.at("W") * (r.at(k) + r.at(k+1));
+        /*
+        return m_params.at("W") * (r.at(k) + r.at(k+1));
+        */
         const double R = std::sqrt(std::pow(r.at(k), 2) + std::pow(r.at(k+1), 2));
         return m_params.at("W") * R;
+        /*
+        const double R = std::sqrt(std::pow(r.at(k) - m_params.at("R"), 2) + std::pow(r.at(k+1) + m_params.at("R"), 2));
+        return m_params.at("W") * R;
+        */
     }
 
     std::vector<double> Conner_Hamiltonian::cal_nabla_phi(const std::vector<double>& r, int k) const {
@@ -55,8 +61,14 @@ namespace mqc {
         */
         const double R = std::sqrt(std::pow(r.at(k), 2) + std::pow(r.at(k+1), 2));
         std::vector<double> nabla_phi(m_dim, 0.0);
-        nabla_phi.at(k) = m_params.at("W") * r.at(k) / R;
-        nabla_phi.at(k+1) = m_params.at("W") * r.at(k+1) / R;
+        nabla_phi.at(k) = m_params.at("W") * (r.at(k)) / R;
+        nabla_phi.at(k+1) = m_params.at("W") * (r.at(k+1)) / R;
+        /*
+        const double R = std::sqrt(std::pow(r.at(k) - m_params.at("R"), 2) + std::pow(r.at(k+1) + m_params.at("R"), 2));
+        std::vector<double> nabla_phi(m_dim, 0.0);
+        nabla_phi.at(k) = m_params.at("W") * (r.at(k) - m_params.at("R")) / R;
+        nabla_phi.at(k+1) = m_params.at("W") * (r.at(k+1) + m_params.at("R")) / R;
+        */
         return nabla_phi;
     }
 

@@ -174,6 +174,10 @@ namespace mqc {
              * update status of the trajectory current configuration
              * if dt > 0, m_Tmat will be updated.
              */
+            /*
+            m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
+            cal_Tmat();
+            */
             if (dt <= 0.0) {
                 // dt <= 0.0 indicates this is the first step, calculate T = v \dot dc
                 m_hamiltonian.cal_info(m_r, m_force, m_dc, m_eva, m_evt);
@@ -398,6 +402,7 @@ namespace mqc {
             int Ndtq = std::round(dt / dtq);
             dtq = dt / Ndtq;
 
+            /*
             // propagate: assuming const Tmat, and m_eva can be linearly interpolated
             auto deva = (m_eva - lasteva) / Ndtq;
             m_eva.swap(lasteva);
@@ -410,7 +415,11 @@ namespace mqc {
                 m_eva += deva;
             }
             m_eva.swap(lasteva);
-            /*
+            */
+
+            // propagate: assuming const Tmat, and m_eva can be linearly interpolated, handle dt that is too large
+            const auto deva = (m_eva - lasteva) / Ndtq;
+            m_eva.swap(lasteva);
             for (int idtq(0); idtq < Ndtq; ++idtq) {
                 // propagate dtq forward
                 double cur_dtq = dtq;
@@ -423,13 +432,16 @@ namespace mqc {
                         hopper(cur_dtq);
                     } catch (const misc::ValueError& e) {
                         // catch exception: need to reduce cur_dtq
+                        misc::confirm<misc::RuntimeError>(cur_dtq > 1e-3 * dtq, misc::fmtstring("hopper: small cur_dtq = %f, break.", cur_dtq));
                         cur_dtq *= 0.5;
                         continue;
                     }
                     electronic_integrator(cur_dtq);
                     accu_dtq += cur_dtq;
+                    m_eva += cur_dtq / dtq * deva;
                 }
-            */
+            }
+            m_eva.swap(lasteva);
 
             // --- time part --- //
             m_t += dt;

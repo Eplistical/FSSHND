@@ -8,6 +8,7 @@
 #include <complex>
 #include <iterator>
 #include <vector>
+#include "misc/fmtstring.hpp"
 #include "misc/exceptions.hpp"
 #include "misc/crasher.hpp"
 
@@ -184,7 +185,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<typename traj_recorder<TrajectoryType>::trajectory_t> rst;
             rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -210,7 +211,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             return irec == -1 ? m_history : std::vector<typename traj_recorder<TrajectoryType>::trajectory_t> (m_history.begin() + irec * m_Ntraj, m_history.begin() + (irec + 1) * m_Ntraj);
         }
@@ -223,7 +224,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<double> rst;
             rst.reserve(m_ndim * m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -250,7 +251,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<double> rst;
             rst.reserve(m_ndim * m_Ntraj * (irec == -1 ? m_Nrec : 1));
@@ -277,7 +278,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<double> rst;
             rst.reserve(m_ndim * m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -304,7 +305,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<double> rst;
             rst.reserve(m_ndim * m_Ntraj * (irec == -1 ? m_Nrec : 1));
@@ -331,7 +332,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<std::complex<double>> rst;
             rst.reserve(m_edim * m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -358,7 +359,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<std::complex<double>> rst;
             rst.reserve(m_edim * m_Ntraj * (irec == -1 ? m_Nrec : 1));
@@ -385,7 +386,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<int> rst;
             rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -411,7 +412,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<int> rst;
             rst.reserve(m_Ntraj * (irec == -1 ? m_Nrec : 1));
@@ -437,7 +438,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<double> rst;
             rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -463,7 +464,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<double> rst;
             rst.reserve(m_Ntraj * (irec == -1 ? m_Nrec : 1));
@@ -489,7 +490,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<double> rst;
             rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -515,7 +516,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<double> rst;
             rst.reserve(m_Ntraj * (irec == -1 ? m_Nrec : 1));
@@ -541,7 +542,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., traj1(tM), ..., trajN(t1), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, "traj_recorder: invalid itraj.");
+            misc::confirm<misc::IndexError>(itraj < m_Ntraj and itraj >= -1, misc::fmtstring("traj_recorder: invalid itraj %d.", itraj));
             // extract
             std::vector<double> rst;
             rst.reserve(m_Nrec * (itraj == -1 ? m_Ntraj : 1));
@@ -567,7 +568,7 @@ namespace mqc {
              *  return format will be : traj1(t1), ..., trajN(t1), ..., traj1(tM), ..., trajN(tM)
              */
             // check
-            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, "rec_recorder: invalid irec.");
+            misc::confirm<misc::IndexError>(irec < m_Nrec and irec >= -1, misc::fmtstring("rec_recorder: invalid irec %d.", irec));
             // extract
             std::vector<double> rst;
             rst.reserve(m_Ntraj * (irec == -1 ? m_Nrec : 1));
