@@ -29,7 +29,7 @@ namespace mqc {
             FSSH_Trajectory<HamiltonianType>& operator=(const FSSH_Trajectory<HamiltonianType>& /* other */) = default;
             // --- simualtion utils --- //
             ~FSSH_Trajectory() = default;
-        private:
+        public:
             // --- simualtion utils --- //
             void cal_Tmat();
             void update_status(double /* dt */);
@@ -44,6 +44,7 @@ namespace mqc {
                 const std::vector<std::complex<double>>& /* c */, int /* s */);
             void die();
             void integrator(double /* dt */);
+            void collapse();
         public:
             // --- other interfaces --- //
             double cal_KE() const;
@@ -91,8 +92,17 @@ namespace mqc {
             inline bool get_enable_hop() const noexcept { return m_enable_hop; }
             inline void set_enable_hop(bool enable_hop) { m_enable_hop = enable_hop; }
 
+            inline bool get_enable_deco() const noexcept { return m_enable_deco; }
+            inline void set_enable_deco(bool enable_deco) { m_enable_deco = enable_deco; }
+
+            inline bool get_enable_momrev() const noexcept { return m_enable_momrev; }
+            inline void set_enable_momrev(bool enable_momrev) { m_enable_momrev = enable_momrev; }
+
             inline bool get_enable_berry_force() const noexcept { return m_enable_berry_force; }
             inline void set_enable_berry_force(bool enable_berry_force) { m_enable_berry_force = enable_berry_force; }
+
+            inline bool get_enable_simple_el_int() const noexcept { return m_enable_simple_el_int; }
+            inline void set_enable_simple_el_int(bool enable_simple_el_int) { m_enable_simple_el_int = enable_simple_el_int; }
 
             inline std::vector<double> get_eva() const noexcept { return m_eva; }
             inline std::vector<std::complex<double>> get_evt() const noexcept { return m_evt; }
@@ -125,7 +135,10 @@ namespace mqc {
             // --- options/flags --- //
             bool m_initialized;
             bool m_enable_hop;
+            bool m_enable_deco;
+            bool m_enable_momrev;
             bool m_enable_berry_force;
+            bool m_enable_simple_el_int;
     };
 
 
@@ -143,7 +156,7 @@ namespace mqc {
             m_hamiltonian(hamiltonian), 
             m_force(), m_dc(), m_eva(), m_evt(), m_Tmat(),
             m_Nhop_accepted(0), m_Nhop_frustrated(0),
-            m_initialized(false), m_enable_hop(true), m_enable_berry_force(true)
+            m_initialized(false), m_enable_hop(true), m_enable_berry_force(true), m_enable_deco(false), m_enable_momrev(false), m_enable_simple_el_int(false)
         {  
             m_edim = hamiltonian.get_dim();
         }
@@ -247,7 +260,6 @@ namespace mqc {
             // 1st conf update
             m_v += 0.5 * dt / m_mass * tot_force;
             m_r += dt * m_v;
-            update_status(dt);
             // 2nd force update 
             tot_force = cal_berry_force(); // berry force
             for (int i(0); i < m_ndim; ++i) {
@@ -329,6 +341,22 @@ namespace mqc {
                     // hop frustrated
                     m_Nhop_frustrated += 1;
                     // MOMENTUM REVERSAL ?
+                    if (m_enable_momrev) {
+                        // XXX: FOR 1D REAL SYS DEBUG ONLY
+                        double Fd1 = 0.0;
+                        double Fd2 = 0.0;
+                        double vd = 0.0;
+                        for (int i(0); i < m_ndim; ++i) {
+                            Fd1 += m_force.at(i).at(from+from*m_edim).real() * m_dc.at(i).at(from+to*m_edim).real();
+                            Fd2 += m_force.at(i).at(  to+  to*m_edim).real() * m_dc.at(i).at(from+to*m_edim).real();
+                            vd += m_v.at(i) * m_dc.at(i).at(from+to*m_edim).real();
+                        }
+                        if (Fd1 * Fd2 < 0.0 and Fd2 * vd < 0.0) {
+                            m_v *= -1.0; // NOT WORK IN HIGH DIM
+                            // recalc Tmat
+                            update_status(dt);
+                        }
+                    }
                 }
             }
         }
@@ -381,72 +409,99 @@ namespace mqc {
              */
             misc::confirm<misc::StateError>(m_initialized, "integrator: FSSH_Trajectory died / not initialzied.");
 
-            // --- nuclear part --- //
-
             auto lasteva = m_eva;
-            nuclear_integrator(dt);
+
+            update_status(dt);
 
             // --- electronic part --- //
 
-            // determine dtq and Ndq
-            double max_abs_T = 0.0;
-            for (auto& Tx : m_Tmat) {
-                max_abs_T = std::max(std::abs(Tx), max_abs_T);
-            } 
-            double max_abs_dE = 0.0;
-            auto diffE = m_eva - mean(m_eva);
-            for (auto& diffEx : diffE) {
-                max_abs_dE = std::max(std::abs(diffEx), max_abs_dE);
-            }
-            double dtq = std::min(dt, std::min(0.02 / max_abs_T, 0.02 / max_abs_dE));
-            int Ndtq = std::round(dt / dtq);
-            dtq = dt / Ndtq;
-
-            /*
-            // propagate: assuming const Tmat, and m_eva can be linearly interpolated
-            auto deva = (m_eva - lasteva) / Ndtq;
-            m_eva.swap(lasteva);
-            for (int idtq(0); idtq < Ndtq; ++idtq) {
-                electronic_integrator(dtq);
-                misc::confirm<misc::ValueError>(norm(m_c) < 2.0, ("integrator: norm(c) diverges."));
+            if (m_enable_simple_el_int) {
+                // simply use RK4, do not split dt
                 if (m_enable_hop) {
-                    hopper(dtq);
-                } 
-                m_eva += deva;
+                    hopper(dt);
+                }
+                electronic_integrator(dt);
             }
-            m_eva.swap(lasteva);
-            */
+            else {
+                // determine dtq and Ndq
+                double max_abs_T = 0.0;
+                for (auto& Tx : m_Tmat) {
+                    max_abs_T = std::max(std::abs(Tx), max_abs_T);
+                } 
+                double max_abs_dE = 0.0;
+                auto diffE = m_eva - mean(m_eva);
+                for (auto& diffEx : diffE) {
+                    max_abs_dE = std::max(std::abs(diffEx), max_abs_dE);
+                }
+                double dtq = std::min(dt, std::min(0.02 / max_abs_T, 0.02 / max_abs_dE));
+                int Ndtq = std::round(dt / dtq);
+                dtq = dt / Ndtq;
+                /*
+                // propagate: assuming const Tmat, and m_eva can be linearly interpolated
+                auto deva = (m_eva - lasteva) / Ndtq;
+                m_eva.swap(lasteva);
+                for (int idtq(0); idtq < Ndtq; ++idtq) {
+                    electronic_integrator(dtq);
+                    misc::confirm<misc::ValueError>(norm(m_c) < 2.0, ("integrator: norm(c) diverges."));
+                    if (m_enable_hop) {
+                        hopper(dtq);
+                    } 
+                    m_eva += deva;
+                }
+                m_eva.swap(lasteva);
+                */
 
-            // propagate: assuming const Tmat, and m_eva can be linearly interpolated, handle dt that is too large
-            const auto deva = (m_eva - lasteva) / Ndtq;
-            m_eva.swap(lasteva);
-            for (int idtq(0); idtq < Ndtq; ++idtq) {
-                // propagate dtq forward
-                double cur_dtq = dtq;
-                double accu_dtq = 0.0;
-                while (accu_dtq < dtq) {
-                    if (dtq - accu_dtq < cur_dtq) {
-                        cur_dtq = dtq - accu_dtq;
+                // propagate: assuming const Tmat, and m_eva can be linearly interpolated, handle dt that is too large
+                const auto deva = (m_eva - lasteva) / Ndtq;
+                m_eva.swap(lasteva);
+                for (int idtq(0); idtq < Ndtq; ++idtq) {
+                    // propagate dtq forward
+                    double cur_dtq = dtq;
+                    double accu_dtq = 0.0;
+                    while (accu_dtq < dtq) {
+                        if (dtq - accu_dtq < cur_dtq) {
+                            cur_dtq = dtq - accu_dtq;
+                        }
+                        try {
+                            hopper(cur_dtq);
+                        } catch (const misc::ValueError& e) {
+                            // catch exception: need to reduce cur_dtq
+                            misc::confirm<misc::RuntimeError>(cur_dtq > 1e-3 * dtq, misc::fmtstring("hopper: small cur_dtq = %f, break.", cur_dtq));
+                            cur_dtq *= 0.5;
+                            continue;
+                        }
+                        electronic_integrator(cur_dtq);
+                        accu_dtq += cur_dtq;
+                        m_eva += cur_dtq / dtq * deva;
                     }
-                    try {
-                        hopper(cur_dtq);
-                    } catch (const misc::ValueError& e) {
-                        // catch exception: need to reduce cur_dtq
-                        misc::confirm<misc::RuntimeError>(cur_dtq > 1e-3 * dtq, misc::fmtstring("hopper: small cur_dtq = %f, break.", cur_dtq));
-                        cur_dtq *= 0.5;
-                        continue;
-                    }
-                    electronic_integrator(cur_dtq);
-                    accu_dtq += cur_dtq;
-                    m_eva += cur_dtq / dtq * deva;
+                }
+                m_eva.swap(lasteva);
+            }
+
+            // --- nuclear part --- //
+
+            auto vlast = m_v;
+
+            nuclear_integrator(dt);
+
+            if (m_enable_deco) {
+                //// decoherence: FOR 1D ONLY!////
+                //// NAIVE DECOHERENCE //// 
+                //// CAREFUL WHEN USING WITH MOM REVERSAL! ////
+                if (m_v.at(0) * vlast.at(0) < 0.0) {
+                    collapse();
                 }
             }
-            m_eva.swap(lasteva);
 
             // --- time part --- //
             m_t += dt;
         }
 
+    template <typename HamiltonianType>
+        void FSSH_Trajectory<HamiltonianType>::collapse() {
+            m_c.assign(m_c.size(), 0.0);
+            m_c.at(m_s) = 1.0;
+        }
 
     // --- other interfaces --- //
 

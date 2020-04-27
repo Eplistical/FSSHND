@@ -130,7 +130,6 @@ vector<trajectory_t> gen_swarm(int my_Ntraj) {
         swarm.back().set_gamma(fric_gamma);
         swarm.back().set_kT(kT);
         swarm.back().set_enable_hop(enable_hop);
-        swarm.back().set_enable_deco(enable_deco);
         swarm.back().set_enable_momrev(enable_momrev);
     }
     return swarm;
@@ -180,10 +179,24 @@ void run() {
         }
 
         // propagation
+        int itr = 0;
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
+                const auto last_v = traj.get_v();
+
                 traj.integrator(dt);
+
+                if (enable_deco) {
+                    // simple decoherence
+                    const auto v = traj.get_v();
+                    if (last_v.at(0) * v.at(0) < 0.0) {
+                        vector<complex<double>> newc(edim, 0.0); 
+                        newc.at(traj.get_s()) = 1.0;
+                        traj.set_c(newc);
+                    }
+                }
             }
+            itr += 1;
         }
     }
     while (recorder.get_Nrec() < Nrec) {

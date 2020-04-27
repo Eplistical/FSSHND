@@ -3,7 +3,7 @@
 #include <complex>
 #include <memory>
 #include <vector>
-#include "three_state_1d_hamiltonian.hpp"
+#include "flat_2d_hamiltonian.hpp"
 #include "fssh_trajectory.hpp"
 #include "traj_recorder.hpp"
 #include "misc/vector.hpp"
@@ -14,29 +14,29 @@
 #include "misc/MPIer.hpp"
 #include "misc/fmtstring.hpp"
 #include "boost/program_options.hpp"
-#include "boost/math/quadrature/trapezoidal.hpp"
 
 using namespace mqc;
 using namespace std;
 namespace po = boost::program_options;
 
-using hamiltonian_t = Three_State_1d_Hamiltonian;
+using hamiltonian_t = Flat_2D_Hamiltonian;
 using trajectory_t = FSSH_Trajectory<hamiltonian_t>;
 using recorder_t = traj_recorder<trajectory_t>;
-using boost::math::quadrature::trapezoidal;
 
-int ndim = 1;
-int edim = 3;
+int ndim = 2;
+int edim = 2;
 double mass = 1000.0;
-double kT = 0.1;
-double fric_gamma = -1.0;
-int init_s = 0;
+int init_s = 1;
+vector<double> init_r { -3.0, 0.0 };
+vector<double> init_p { 20.0, 0.0 };
+vector<double> sigma_r { 0.5, 0.5 };
+vector<double> sigma_p { 1.0, 1.0 };
 int Ntraj = 2000;
 int Nstep = 100000;
-int output_step = 100;
-double Etot = 0.03;
+int output_step = 1000;
 double dt = 0.1;
 bool enable_hop = true;
+bool enable_berry_force = true;
 bool enable_deco = false;
 bool enable_momrev = false;
 bool enable_log = true;
@@ -44,13 +44,16 @@ vector<double> potential_params;
 int seed = 42;
 unique_ptr<hamiltonian_t> hami;
 
+
 void setup_params() {
-    /*
+    /**
      * check & setup parameters for the simulation 
      */
     // check
-    misc::confirm<misc::ValueError>(kT > 0.0, "kT must > 0.");
+    misc::confirm<misc::ValueError>(init_r.size() == init_p.size()  and init_r.size() == sigma_r.size() and init_p.size() == sigma_p.size(), 
+                                    "argparse: init_r, init_p, sigma_r, sigma_p must have the same sizes.");
     misc::confirm<misc::ValueError>(init_s >= 0, "init_s must >= 0");
+    misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
     misc::confirm<misc::ValueError>(dt > 0.0, "dt must > 0.");
     misc::confirm<misc::ValueError>(Ntraj > 0, "Ntraj must > 0.");
     misc::confirm<misc::ValueError>(Nstep > 0, "Nstep must > 0.");
@@ -58,10 +61,8 @@ void setup_params() {
     // setup
     hami = make_unique<hamiltonian_t>();
     if (not potential_params.empty()) {
-        // potential_params set, overwrite mass
         hami->set_params(potential_params);
     }
-    misc::confirm<misc::ValueError>(mass > 0.0, "mass must > 0.");
 }
 
 bool argparse(int argc, char** argv) 
@@ -76,16 +77,18 @@ bool argparse(int argc, char** argv)
         ("Nstep", po::value<decltype(Nstep)>(&Nstep), "# step")
         ("output_step", po::value<decltype(output_step)>(&output_step), "# step for output")
         ("dt", po::value<decltype(dt)>(&dt), "single time step")
-        ("mass", po::value<decltype(mass)>(&mass), "mass, will be overwritten if potential_params is set.")
-        ("kT", po::value<decltype(kT)>(&kT), "temperature.")
-        ("fric_gamma", po::value<decltype(fric_gamma)>(&fric_gamma), "friction gamma.")
+        ("mass", po::value<decltype(mass)>(&mass), "mass")
+        ("init_r", po::value<decltype(init_r)>(&init_r)->multitoken(), "init_r vector")
+        ("init_p", po::value<decltype(init_p)>(&init_p)->multitoken(), "init_p vector")
+        ("sigma_r", po::value<decltype(sigma_r)>(&sigma_r)->multitoken(), "sigma_r vector")
+        ("sigma_p", po::value<decltype(sigma_p)>(&sigma_p)->multitoken(), "sigma_p vector")
         ("init_s", po::value<decltype(init_s)>(&init_s), "init_s")
-        ("Etot", po::value<decltype(Etot)>(&Etot), "Etot")
         ("potential_params", po::value<decltype(potential_params)>(&potential_params)->multitoken(), "potential_params vector")
-        ("enable_hop", po::value<decltype(enable_hop)>(&enable_hop), "enable_hop")
-        ("enable_deco", po::value<decltype(enable_deco)>(&enable_deco), "enable_deco")
-        ("enable_momrev", po::value<decltype(enable_momrev)>(&enable_momrev), "enable_momrev")
-        ("enable_log", po::value<decltype(enable_log)>(&enable_log), "enable_log")
+        ("enable_hop", po::value<decltype(enable_hop)>(&enable_hop), "enable hop")
+        ("enable_berry_force", po::value<decltype(enable_berry_force)>(&enable_berry_force), "enable berry_force")
+        ("enable_deco", po::value<decltype(enable_deco)>(&enable_deco), "enable deco")
+        ("enable_momrev", po::value<decltype(enable_momrev)>(&enable_momrev), "enable momrev")
+        ("enable_log", po::value<decltype(enable_log)>(&enable_log), "enable log")
         ("seed", po::value<decltype(seed)>(&seed), "random seed")
         ;
     po::variables_map vm; 
@@ -103,33 +106,30 @@ void logging(const string& msg, int rank = 0) {
     /**
      * print out log message
      */
-    //ioer::info("# thread ", MPIer::rank, " : ", msg);
-    if (enable_log and MPIer::rank == rank) {
+    if (MPIer::rank == rank) {
         ioer::info(msg);
     }
 }
 
-vector<trajectory_t> gen_swarm(int my_Ntraj) {
+vector<trajectory_t> gen_swarm(int Ntraj) {
     /**
      * generate a swarm of trajectories
      */
     vector<complex<double>> init_c(edim, matrixop::ZEROZ);
     init_c.at(init_s) = matrixop::ONEZ;
     vector<trajectory_t> swarm;
-    // calculate vx
-    const double vx = std::sqrt(2.0 * Etot / mass);
-    // assign initial values
-    for (int itraj(0); itraj < my_Ntraj; ++itraj) {
+
+    for (int itraj(0); itraj < Ntraj; ++itraj) {
         swarm.emplace_back(*hami);
         vector<double> r(ndim);
         vector<double> v(ndim);
-        r.at(0) = -4.0;
-        v.at(0) = vx;
-
+        for (int i(0); i < ndim; ++i) {
+            r.at(i) = randomer::normal(init_r.at(i), sigma_r.at(i));
+            v.at(i) = randomer::normal(init_p.at(i), sigma_p.at(i)) / mass;
+        }
         swarm.back().setup(mass, r, v, init_c, init_s);
-        swarm.back().set_gamma(fric_gamma);
-        swarm.back().set_kT(kT);
         swarm.back().set_enable_hop(enable_hop);
+        swarm.back().set_enable_berry_force(enable_berry_force);
         swarm.back().set_enable_deco(enable_deco);
         swarm.back().set_enable_momrev(enable_momrev);
     }
@@ -140,9 +140,8 @@ bool check_end(const trajectory_t& traj) {
     /**
      * determine if a trajectory reaches the end of its simulation
      */
-    const double x = traj.get_r().at(0);
-    const double vx = traj.get_v().at(0);
-    return (x < -4.0 and vx < 0.0) or (x > 4.0 and vx > 0.0);
+    return (traj.get_r().at(0) > 8.0 and traj.get_v().at(0) > 0.0) 
+        or (traj.get_r().at(0) < -8.0 and traj.get_v().at(0) < 0.0);
 }
 
 
@@ -162,7 +161,6 @@ void run() {
     // --- simulation --- //
 
     logging("# initializing trajectories ...");
-
     vector<trajectory_t> swarm = gen_swarm(my_Ntraj);
     logging("# simulating ...");
     const int Nrec = Nstep / output_step + 1;
@@ -178,7 +176,6 @@ void run() {
                 recorder.stamp(swarm);
             }
         }
-
         // propagation
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
@@ -196,14 +193,13 @@ void run() {
 
     // --- collect data --- // 
 
-
-    // dynamic info
-    logging("# collecting dynamics data ...");
+    logging("# collecting data ...");
     vector<vector<int>> sarr_data(Nrec);
     vector<vector<double>> rarr_data(Nrec);
     vector<vector<double>> varr_data(Nrec);
     vector<vector<double>> KEarr_data(Nrec);
     vector<vector<double>> PEarr_data(Nrec);
+
     for (int irec(0); irec < Nrec; ++irec) {
         auto sarr = recorder.get_s_by_rec(irec);
         auto rarr = recorder.get_r_by_rec(irec);
@@ -217,7 +213,6 @@ void run() {
             varr_data.at(irec) = move(varr);
             KEarr_data.at(irec) = move(KEarr);
             PEarr_data.at(irec) = move(PEarr);
-
         }
 
         for (int r(1); r < MPIer::size; ++r) {
@@ -237,33 +232,6 @@ void run() {
     }
     MPIer::barrier(); 
 
-    // hop info
-    logging("# collecting hop data ...");
-    int tot_Nhop_acc = 0;
-    int tot_Nhop_fru = 0;
-    int Nhop_acc = 0;
-    int Nhop_fru = 0;
-    for (const auto& traj : swarm) {
-        Nhop_acc += traj.get_Nhop_accepted();
-        Nhop_fru += traj.get_Nhop_frustrated();
-    }
-    if (MPIer::master) {
-        tot_Nhop_acc = Nhop_acc;
-        tot_Nhop_fru = Nhop_fru;
-    }
-
-    for (int r(1); r < MPIer::size; ++r) {
-        if (MPIer::master) {
-            MPIer::recv(r, Nhop_acc, Nhop_fru);
-            tot_Nhop_acc += Nhop_acc;
-            tot_Nhop_fru += Nhop_fru;
-        }
-        else if (MPIer::rank == r) {
-            MPIer::send(0, Nhop_acc, Nhop_fru);
-        }
-        MPIer::barrier();
-    }
-
     // --- post-procssing & output --- //
 
     logging("# postprocessing ...");
@@ -274,28 +242,31 @@ void run() {
                     " ndim = ", ndim,
                     " edim = ", edim,
                     " mass = ", mass,
-                    " kT = ", kT,
-                    " Etot = ", Etot,
                     " Ntraj = ", Ntraj,
                     " Nstep = ", Nstep,
                     " output_step = ", output_step,
                     " dt = ", dt,
-                    " fric_gamma = ", fric_gamma,
+                    " init_r = ", init_r,
+                    " init_p = ", init_p,
+                    " sigma_r = ", sigma_r,
+                    " sigma_p = ", sigma_p,
                     " enable_hop = ", enable_hop,
+                    " enable_berry_force = ", enable_berry_force,
                     " enable_deco = ", enable_deco,
                     " enable_momrev = ", enable_momrev,
-                    " seed = ", seed,
+                    " enable_log = ", enable_log,
                     "");
         ioer::tabout("#", "t", 
                 "nT", vector<string>(edim - 1, ""),
                 "nR", vector<string>(edim - 1, ""),
-                "KE",
-                "PE",
+                "pxT", vector<string>(edim - 1, ""),
+                "pyT", vector<string>(edim - 1, ""),
+                "pxR", vector<string>(edim - 1, ""),
+                "pyR", vector<string>(edim - 1, ""),
                 "Etot"
                 );
         // dynamics output
         for (int irec(0); irec < Nrec; ++irec) {
-
             double t = irec * output_step * dt;
             const auto& sarr = sarr_data.at(irec);
             const auto& rarr = rarr_data.at(irec);
@@ -303,57 +274,77 @@ void run() {
             const auto& KEarr = KEarr_data.at(irec);
             const auto& PEarr = PEarr_data.at(irec);
 
-            // statistics
-            vector<double> r, p;
-            double s = 0.0;
+            // population
+            double n0T = 0.0, n0R = 0.0, n1T = 0.0, n1R = 0.0;
+            // momentum 
+            double px0T = 0.0, py0T = 0.0, px0R = 0.0, py0R = 0.0;
+            double px1T = 0.0, py1T = 0.0, px1R = 0.0, py1R = 0.0;
+            // enegry
             double KE = 0.0, PE = 0.0;
-            vector<double> nT(edim, 0.0);
-            vector<double> nR(edim, 0.0);
             for (int itraj(0); itraj < Ntraj; ++itraj) {
-                s += sarr.at(itraj);
-                if (itraj == 0) {
-                    r = vector<double>(rarr.begin() + itraj * ndim, rarr.begin() + (itraj + 1) * ndim);
-                    p = mass * vector<double>(varr.begin() + itraj * ndim, varr.begin() + (itraj + 1) * ndim);
+                if (sarr.at(itraj) == 0) {
+                    if (rarr.at(0+itraj*ndim) < 0.0) {
+                        n0R += 1.0;
+                        px0R += varr.at(0+itraj*ndim);
+                        py0R += varr.at(1+itraj*ndim);
+                    }
+                    else {
+                        n0T += 1.0;
+                        px0T += varr.at(0+itraj*ndim);
+                        py0T += varr.at(1+itraj*ndim);
+                    }
                 }
-                else {
-                    r += vector<double>(rarr.begin() + itraj * ndim, rarr.begin() + (itraj + 1) * ndim);
-                    p += mass * vector<double>(varr.begin() + itraj * ndim, varr.begin() + (itraj + 1) * ndim);
+                else if (sarr.at(itraj) == 1) {
+                    if (rarr.at(0+itraj*ndim) < 0.0) {
+                        n1R += 1.0;
+                        px1R += varr.at(0+itraj*ndim);
+                        py1R += varr.at(1+itraj*ndim);
+                    }
+                    else {
+                        n1T += 1.0;
+                        px1T += varr.at(0+itraj*ndim);
+                        py1T += varr.at(1+itraj*ndim);
+                    }
                 }
                 KE += KEarr.at(itraj);
                 PE += PEarr.at(itraj);
-
-                if (varr.at(0 + itraj * ndim) > 0.0) {
-                    // nT
-                    nT.at(sarr.at(itraj)) += 1.0;
-                }
-                else {
-                    // nR
-                    nR.at(sarr.at(itraj)) += 1.0;
-                }
             }
 
-            r /= Ntraj;
-            p /= Ntraj;
-            s /= Ntraj;
+            px0R *= (n0R == 0 ? 0.0 : (mass / n0R));
+            py0R *= (n0R == 0 ? 0.0 : (mass / n0R));
+            px0T *= (n0T == 0 ? 0.0 : (mass / n0T));
+            py0T *= (n0T == 0 ? 0.0 : (mass / n0T));
+            px1R *= (n1R == 0 ? 0.0 : (mass / n1R));
+            py1R *= (n1R == 0 ? 0.0 : (mass / n1R));
+            px1T *= (n1T == 0 ? 0.0 : (mass / n1T));
+            py1T *= (n1T == 0 ? 0.0 : (mass / n1T));
+
+            n0R /= Ntraj;
+            n0T /= Ntraj;
+            n1R /= Ntraj;
+            n1T /= Ntraj;
 
             KE /= Ntraj;
             PE /= Ntraj;
 
-            nT /= Ntraj;
-            nR /= Ntraj;
-
-            ioer::tabout("#", t, nT, nR, KE, PE, KE + PE);
+            ioer::tabout("#", t, 
+                    n0T, n1T, n0R, n1R,
+                    px0T, px1T, 
+                    py0T, py1T, 
+                    px0R, px1R, 
+                    py0R, py1R, 
+                    KE + PE
+                    );
             // final output
             if (irec == Nrec - 1) {
-                // dyn info
-                ioer::tabout(Etot, nT, nR, KE, PE, KE + PE);
-                // hop info
-                ioer::info("## hop info: ", 
-                            " Nhop_acc = ", tot_Nhop_acc, 
-                            " Nhop_fru = ", tot_Nhop_fru, 
-                            " acc ratio = ", static_cast<double>(tot_Nhop_acc) / (tot_Nhop_acc + tot_Nhop_fru),
-                            ""
-                            );
+                ioer::tabout(init_p.at(0),
+                        n0T, n1T, n0R, n1R,
+                        px0T, px1T, 
+                        py0T, py1T, 
+                        px0R, px1R, 
+                        py0R, py1R, 
+                        KE + PE
+                        );
             }
         }
     }
@@ -381,71 +372,46 @@ void runtest() {
                     " ndim = ", ndim,
                     " edim = ", edim,
                     " mass = ", mass,
-                    " kT = ", kT,
-                    " Etot = ", Etot,
                     " Ntraj = ", Ntraj,
                     " Nstep = ", Nstep,
                     " output_step = ", output_step,
                     " dt = ", dt,
-                    " fric_gamma = ", fric_gamma,
+                    " init_r = ", init_r,
+                    " init_p = ", init_p,
+                    " sigma_r = ", sigma_r,
+                    " sigma_p = ", sigma_p,
                     " enable_hop = ", enable_hop,
+                    " enable_berry_force = ", enable_berry_force,
                     " enable_deco = ", enable_deco,
                     " enable_momrev = ", enable_momrev,
-                    " seed = ", seed,
+                    " enable_log = ", enable_log,
                     "");
     }
-
+    
     // hamiltonian
     ioer::info("# Hamiltonian:");
     vector<complex<double>> init_c(edim, matrixop::ZEROZ);
     init_c.at(init_s) = matrixop::ONEZ;
     vector<double> init_v(ndim, 0.0);
+    init_v.at(0) = 0.1;
     trajectory_t traj(*hami);
-
-    ioer::tabout("#0", arange(1, 100));
-    ioer::tabout(
-                "#x",
-                "H00", "H11", "H22",
-                "E0", "E1", "E2",
-                "F0x", 
-                "F1x", 
-                "F2x", 
-                "d01xR", "d01xI",
-                "d02xR", "d02xI",
-                "d12xR", "d12xI",
-                "H01R", "H01I",
-                "H02R", "H02I",
-                "H12R", "H12I",
-                ""
-                );
-    double x = -4.0;
-    while (x < 4.0) {
-        vector<double> r{x};
-        traj.setup(mass, r, init_v, init_c, init_s);
-        auto H = hami->cal_H(r);
-        auto eva = traj.get_eva();
-        auto dc = traj.get_dc();
-        auto force = traj.get_force();
-
-        ioer::tabout(x, 
-                H.at(0+0*edim).real(), H.at(1+1*edim).real(), H.at(2+2*edim).real(),
-                eva,
-
-                real(force.at(0).at(0+0*edim)),
-                real(force.at(0).at(1+1*edim)), 
-                real(force.at(0).at(2+2*edim)), 
-
-                real(dc.at(0).at(0+1*edim)), imag(dc.at(0).at(0+1*edim)),  // d01xR, d01xI
-                real(dc.at(0).at(0+2*edim)), imag(dc.at(0).at(0+2*edim)),  // d02xR, d02xI
-                real(dc.at(0).at(1+2*edim)), imag(dc.at(0).at(1+2*edim)),  // d12xR, d12xI
-
-                H.at(0+1*edim).real(), H.at(0+1*edim).imag(), // H01R, H01I
-                H.at(0+2*edim).real(), H.at(0+2*edim).imag(), // H02R, H02I
-                H.at(1+2*edim).real(), H.at(1+2*edim).imag(), // H12R, H12I
-
-                ""
-                );
-        x += 0.02;
+    double x = -5.0;
+    while (x < 5.0) {
+        double y = -5.0;
+        while (y < 5.0) {
+            vector<double> r{x, y};
+            traj.setup(mass, r, init_v, init_c, init_s);
+            auto H = hami->cal_H(r);
+            auto eva = traj.get_eva();
+            ioer::tabout(x, y, 
+                        H.at(0+0*edim).real(), H.at(1+1*edim).real(), 
+                        eva,
+                        traj.cal_berry_force(),
+                        ""
+                        );
+            y += 0.05;
+        }
+        x += 0.05;
     }
 
     // initial distribution
@@ -458,6 +424,7 @@ void runtest() {
     return ;
 }
 
+
 int main(int argc, char** argv) {
     /**
      * entry
@@ -469,7 +436,7 @@ int main(int argc, char** argv) {
     randomer::seed(MPIer::assign_random_seed(seed));
     timer::tic();
     try { 
-        if (argc > 1 and string(argv[1]) == "test") {
+        if (string(argv[1]) == "test") {
             runtest();
         }
         else {

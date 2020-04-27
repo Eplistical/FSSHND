@@ -3,7 +3,7 @@
 #include <complex>
 #include <memory>
 #include <vector>
-#include "three_state_1d_hamiltonian.hpp"
+#include "test1d2s_hamiltonian.hpp"
 #include "fssh_trajectory.hpp"
 #include "traj_recorder.hpp"
 #include "misc/vector.hpp"
@@ -20,21 +20,22 @@ using namespace mqc;
 using namespace std;
 namespace po = boost::program_options;
 
-using hamiltonian_t = Three_State_1d_Hamiltonian;
+using hamiltonian_t = Test1d2s_Hamiltonian;
 using trajectory_t = FSSH_Trajectory<hamiltonian_t>;
 using recorder_t = traj_recorder<trajectory_t>;
 using boost::math::quadrature::trapezoidal;
 
 int ndim = 1;
-int edim = 3;
-double mass = 1000.0;
+int edim = 2;
+//double mass = 1000.0;
+double mass = 2000.0;
 double kT = 0.1;
 double fric_gamma = -1.0;
 int init_s = 0;
-int Ntraj = 2000;
+int Ntraj = 5000;
 int Nstep = 100000;
-int output_step = 100;
-double Etot = 0.03;
+int output_step = 1000;
+//double Etot = 0.02;
 double dt = 0.1;
 bool enable_hop = true;
 bool enable_deco = false;
@@ -103,7 +104,6 @@ void logging(const string& msg, int rank = 0) {
     /**
      * print out log message
      */
-    //ioer::info("# thread ", MPIer::rank, " : ", msg);
     if (enable_log and MPIer::rank == rank) {
         ioer::info(msg);
     }
@@ -123,7 +123,12 @@ vector<trajectory_t> gen_swarm(int my_Ntraj) {
         swarm.emplace_back(*hami);
         vector<double> r(ndim);
         vector<double> v(ndim);
+        /*
         r.at(0) = -4.0;
+        v.at(0) = vx;
+        */
+
+        r.at(0) = -12.0;
         v.at(0) = vx;
 
         swarm.back().setup(mass, r, v, init_c, init_s);
@@ -132,6 +137,8 @@ vector<trajectory_t> gen_swarm(int my_Ntraj) {
         swarm.back().set_enable_hop(enable_hop);
         swarm.back().set_enable_deco(enable_deco);
         swarm.back().set_enable_momrev(enable_momrev);
+        swarm.back().set_enable_simple_el_int(true);
+        swarm.back().set_enable_berry_force(false);
     }
     return swarm;
 }
@@ -142,7 +149,8 @@ bool check_end(const trajectory_t& traj) {
      */
     const double x = traj.get_r().at(0);
     const double vx = traj.get_v().at(0);
-    return (x < -4.0 and vx < 0.0) or (x > 4.0 and vx > 0.0);
+    //return (x < -5.0 and vx < 0.0) or (x > 5.0 and vx > 0.0);
+    return (x < -12.0 and vx < 0.0) or (x > 12.0 and vx > 0.0);
 }
 
 
@@ -167,6 +175,8 @@ void run() {
     logging("# simulating ...");
     const int Nrec = Nstep / output_step + 1;
     for (int istep(0); istep < Nstep; ++istep) {
+
+
         // recording
         if (istep % output_step == 0) {
             logging(misc::fmtstring("# step %d / %d", istep, Nstep));
@@ -180,10 +190,20 @@ void run() {
         }
 
         // propagation
+        int itr = 0;
         for (trajectory_t& traj : swarm) {
             if (not check_end(traj)) {
+                /*
+                ioer::info("t = ", istep * dt, " x = ", traj.get_r(), " p = ", traj.get_v() * mass,
+                        " c0 = ", traj.get_c().at(0),
+                        " c1 = ", traj.get_c().at(1),
+                        " s = ", traj.get_s(),
+                        ""
+                        );
+                        */
                 traj.integrator(dt);
             }
+            itr += 1;
         }
     }
     while (recorder.get_Nrec() < Nrec) {
@@ -405,17 +425,10 @@ void runtest() {
     ioer::tabout("#0", arange(1, 100));
     ioer::tabout(
                 "#x",
-                "H00", "H11", "H22",
-                "E0", "E1", "E2",
-                "F0x", 
-                "F1x", 
-                "F2x", 
-                "d01xR", "d01xI",
-                "d02xR", "d02xI",
-                "d12xR", "d12xI",
-                "H01R", "H01I",
-                "H02R", "H02I",
-                "H12R", "H12I",
+                "H_i", vector<string>(edim - 1, ""),
+                "E_i", vector<string>(edim - 1, ""),
+                "F_i", vector<string>(edim - 1, ""),
+                "d01R", "d01I",
                 ""
                 );
     double x = -4.0;
@@ -428,21 +441,13 @@ void runtest() {
         auto force = traj.get_force();
 
         ioer::tabout(x, 
-                H.at(0+0*edim).real(), H.at(1+1*edim).real(), H.at(2+2*edim).real(),
+                H.at(0+0*edim).real(), H.at(1+1*edim).real(), 
                 eva,
 
                 real(force.at(0).at(0+0*edim)),
                 real(force.at(0).at(1+1*edim)), 
-                real(force.at(0).at(2+2*edim)), 
 
                 real(dc.at(0).at(0+1*edim)), imag(dc.at(0).at(0+1*edim)),  // d01xR, d01xI
-                real(dc.at(0).at(0+2*edim)), imag(dc.at(0).at(0+2*edim)),  // d02xR, d02xI
-                real(dc.at(0).at(1+2*edim)), imag(dc.at(0).at(1+2*edim)),  // d12xR, d12xI
-
-                H.at(0+1*edim).real(), H.at(0+1*edim).imag(), // H01R, H01I
-                H.at(0+2*edim).real(), H.at(0+2*edim).imag(), // H02R, H02I
-                H.at(1+2*edim).real(), H.at(1+2*edim).imag(), // H12R, H12I
-
                 ""
                 );
         x += 0.02;

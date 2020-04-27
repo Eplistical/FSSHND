@@ -110,10 +110,10 @@ void logging(const string& msg, int rank = 0) {
 }
 
 double xdist(double x) {
-    // x-distribution to sample
+    // x-distribution to sample (the wave function psi, instead of psi^2)
     const double Wa = hami->get_param("OMEGA_A");
     const double M = hami->get_param("MASS");
-    return std::pow(M * Wa / M_PI, 0.5) * std::exp(-M * Wa * x * x);
+    return std::pow(M * Wa / M_PI, 0.25) * std::exp(-0.5 * M * Wa * x * x);
 }
 
 template<typename Callable> 
@@ -170,7 +170,7 @@ vector<trajectory_t> gen_swarm(int my_Ntraj) {
     vector<trajectory_t> swarm;
     // sample r&p on the x-diretion
     const vector<double> rp0 { 0.0, 0.0 }; 
-    const vector<double> rpsigma { 0.05, 0.05 };
+    const vector<double> rpsigma { 0.1, 2.0 };
     const vector<vector<double>> rps = rp_sample(my_Ntraj, 10000, 40, rp0, rpsigma);
     // calculate vy
     const double Ex = 0.5 * hami->get_param("OMEGA_A");
@@ -429,6 +429,29 @@ void runtest() {
     return ;
     */
 
+    /*
+    // wtrans
+    ioer::info("## wtrans-x");
+    for (double x(-4); x < 4; x += 0.02) {
+        ioer::tabout(x, wtrans(xdist, x, 0));
+    }
+
+    ioer::info("## wtrans-p");
+    for (double p(-16); p < 16; p += 0.2) {
+        ioer::tabout(p, wtrans(xdist, 0, p));
+    }
+
+
+    ioer::info("## wtrans-xp");
+    for (double x(-4); x < 4; x += 0.02) {
+        for (double p(-16); p < 16; p += 0.2) {
+            ioer::tabout(x, p, wtrans(xdist, x, p));
+        }
+    }
+    return ;
+    */
+    
+
     // hamiltonian
     ioer::info("# Hamiltonian:");
     vector<complex<double>> init_c(edim, matrixop::ZEROZ);
@@ -454,10 +477,10 @@ void runtest() {
     }
 
     // initial distribution
-    ioer::info("# initial dist:");
+    ioer::info("# initial dist (r & p):");
     auto swarm = gen_swarm(my_Ntraj);
     for (auto& traj : swarm) {
-        ioer::info("## ", traj.get_r(), traj.get_v());
+        ioer::info("## ", traj.get_r(), traj.get_v() * mass);
     }
 
     return ;
