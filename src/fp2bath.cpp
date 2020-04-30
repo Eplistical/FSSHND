@@ -283,8 +283,8 @@ void run() {
             n0 /= Ntraj;
             KE /= Ntraj;
 
-            ioer::tabout("#", t, 
-                        n0, 
+            ioer::tabout(" ", t, 
+                        1.0 - n0, 
                         KE
                         );
             // final output
