@@ -69,7 +69,7 @@ void setup_params() {
     sigma_r.at(1) = (hami->get_param("OMEGA_Y") > 0.0) ? 
         std::sqrt(init_kT / mass / std::pow(hami->get_param("OMEGA_Y"), 2)) : 0.0;
     sigma_p.at(0) = std::sqrt(mass * init_kT);
-    sigma_p.at(0) = std::sqrt(mass * init_kT);
+    sigma_p.at(1) = std::sqrt(mass * init_kT);
 }
 
 bool argparse(int argc, char** argv) 
