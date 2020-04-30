@@ -291,7 +291,16 @@ void run() {
             if (irec == Nrec - 1) {
             }
         }
+
+        // xv distribution
+        ioer::info("## xv distribution:");
+        ioer::info("## format: x1, y1,  ..., xN, yN, vx1, vy1, ..., vxN, vyN");
+        for (int irec(0); irec < Nrec; ++irec) {
+            ioer::tabout("## ", rarr_data.at(irec), varr_data.at(irec));
+        }
+
     }
+
     MPIer::barrier();
 }
 
