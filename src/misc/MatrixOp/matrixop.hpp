@@ -2,6 +2,7 @@
 #define _MATRIXOP_API_HPP
 
 #include "matrixop_config.hpp"
+#include "matvec.hpp"
 #include "matmat.hpp"
 #include "eig.hpp"
 #include "mpower.hpp"

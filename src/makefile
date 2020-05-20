@@ -12,6 +12,8 @@ LIBS += -lboost_program_options -lopenblas -llapack -lpthread -lgfortran
 
 all : tully1 tully1_2d flat_2d multistate conner nuscatter three_state three_state_1d test1d2s yanze_straight
 
+2bath : fp2bath
+
 tully1 : hamiltonian.o adjust_evt_phase.o tully1_hamiltonian.o tully1.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
@@ -40,6 +42,9 @@ test1d2s : hamiltonian.o adjust_evt_phase.o test1d2s_hamiltonian.o test1d2s.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 yanze_straight : hamiltonian.o adjust_evt_phase.o yanze_straight_hamiltonian.o yanze_straight.cpp
+	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
+
+fp2bath : hamiltonian.o adjust_evt_phase.o fp2bath_hamiltonian.o fp2bath.cpp
 	$(MPICXX) $(OPT) -o $@ $^ $(LIBS)
 
 hamiltonian.o : hamiltonian.cpp
@@ -76,6 +81,9 @@ test1d2s_hamiltonian.o : test1d2s_hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 
 
 yanze_straight_hamiltonian.o : yanze_straight_hamiltonian.cpp
+	$(CXX) $(OPT) -o $@ -c $^ 
+
+fp2bath_hamiltonian.o : fp2bath_hamiltonian.cpp
 	$(CXX) $(OPT) -o $@ -c $^ 
 
 misc : 
